@@ -1,21 +1,46 @@
+# Spring Boot 백엔드 업스트림
 upstream spring_boot_app {
-    server spring-boot-app:8080;
+    server spring-boot-app:8080; # 컨테이너 이름과 포트
+    keepalive 32; # 연결 재사용
 }
 
-# Rate Limit
-limit_req_zone $binary_remote_addr zone=mylimit:10m rate=1r/s;
+# 요청 제한 존
+limit_conn_zone $binary_remote_addr zone=perip:10m;
+limit_req_zone  $binary_remote_addr zone=mylimit:10m rate=1r/s;
 
 server {
     listen 80;
     server_name ${SERVER_NAME};
 
+    # 응답 코드를 429로 지정
+    limit_req_status 429;
+    limit_conn_status 429;
+
+    # 기본 제한/보안
+    limit_conn perip 20;
+    client_max_body_size 10m;
+    client_header_timeout 10s;
+    client_body_timeout 10s;
+    send_timeout 10s;
+    reset_timedout_connection on;
+
+    # 보안 헤더
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+
     location / {
         limit_req zone=mylimit burst=5;
-        
+
         proxy_pass http://spring_boot_app;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
     }
 }
