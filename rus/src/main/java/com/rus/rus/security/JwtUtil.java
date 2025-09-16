@@ -1,4 +1,4 @@
-package com.rus.rus.service;
+package com.rus.rus.security;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -10,7 +10,7 @@ import io.jsonwebtoken.SigningKeyResolver;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
+import java.net.URL;
 import java.security.Key;
 
 @Component
@@ -29,7 +29,7 @@ public class JwtUtil {
             try {
                 // JwkProvider를 한 번만 초기화합니다.
                 if (this.provider == null) {
-                    this.provider = new UrlJwkProvider(URI.create(jwksUrl).toURL());
+                    this.provider = new UrlJwkProvider(new URL(jwksUrl));
                 }
                 // 토큰 헤더에서 kid(Key ID)를 가져와서 일치하는 공개키를 JWKS 목록에서 찾습니다.
                 Jwk jwk = provider.get(jwsHeader.getKeyId());

@@ -1,4 +1,4 @@
-package com.rus.rus.service;
+package com.rus.rus.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rus.rus.common.ErrorResponseDTO;
@@ -8,9 +8,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 
 import java.io.IOException;
 
