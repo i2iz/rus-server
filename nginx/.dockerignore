@@ -1,0 +1,21 @@
+# Git version control files
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor specific files
+.idea/
+*.iml
+.vscode/
+
+# OS-generated files (macOS, Windows)
+.DS_Store
+Thumbs.db
+
+# Log files and temporary files
+*.log
+*.tmp
+
+# Local environment configuration
+.env
+.env.*
