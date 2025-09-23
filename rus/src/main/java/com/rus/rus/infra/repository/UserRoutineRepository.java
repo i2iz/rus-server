@@ -8,4 +8,5 @@ import com.rus.rus.domain.UserRoutine;
 
 public interface UserRoutineRepository extends JpaRepository<UserRoutine, Integer> {
     List<UserRoutine> findByUserProfileUid(String uid);
+    List<UserRoutine> findByUserProfile_Uid(String uid);
 }
