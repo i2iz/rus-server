@@ -1,24 +1,20 @@
 package com.rus.rus.application;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
+import com.rus.rus.controller.dto.req.RoutineAddRequestDto;
+import com.rus.rus.controller.dto.req.RoutineUpdateRequestDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.rus.rus.controller.dto.CategoryDto;
-import com.rus.rus.controller.dto.CollectionDetailDto;
-import com.rus.rus.controller.dto.RecommendedRoutineDto;
-import com.rus.rus.controller.dto.RoutineDto;
-import com.rus.rus.controller.dto.res.AllCollectionsResponseDto;
-import com.rus.rus.controller.dto.res.AllRoutinesResponseDto;
-import com.rus.rus.controller.dto.res.RecommendResponseDto;
-import com.rus.rus.domain.Routine;
-import com.rus.rus.domain.RoutineCollection;
-import com.rus.rus.domain.RoutineCollectionMapper;
-import com.rus.rus.infra.repository.RoutineCollectionMapperRepository;
-import com.rus.rus.infra.repository.RoutineCollectionRepository;
-import com.rus.rus.infra.repository.RoutineRepository;
+import com.rus.rus.controller.dto.*;
+import com.rus.rus.controller.dto.res.*;
+import com.rus.rus.domain.*;
+import com.rus.rus.infra.repository.*;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,65 +22,65 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RoutineService {
 
-    private static final List < String > ALL_CATEGORIES = Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
+    private static final List<String> ALL_CATEGORIES = Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
     private static final int TOTAL_RECOMMEND_COUNT = 10;
+    private static final int SERA_ROUTINE_LUX_BONUS = 10;
 
     private final RoutineRepository routineRepository;
     private final RoutineCollectionRepository routineCollectionRepository;
     private final RoutineCollectionMapperRepository routineCollectionMapperRepository;
+    private final UserRoutineRepository userRoutineRepository;
+    private final UserAttainmentRepository userAttainmentRepository;
+    private final CategoryRepository categoryRepository;
+    private final RoutineSeraRepository routineSeraRepository;
+    private final RoutineSeraAttainmentRepository routineSeraAttainmentRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final ChallengeUserRepository challengeUserRepository;
 
     /**
      * 요청된 카테고리에 가중치를 부여하여 총 10개의 루틴을 추천합니다.
      * 5개 모든 카테고리가 최소 1개 이상 포함됩니다.
-     *
-     * @param requestedCategoryNames 추천받고 싶은 카테고리 이름 목록
-     * @return 추천 루틴 정보가 담긴 DTO
      */
     @Transactional(readOnly = true)
-    public RecommendResponseDto getRecommendedRoutines(List < String > requestedCategoryNames) {
-        // 입력 정제
-        List < String > requested = Optional.ofNullable(requestedCategoryNames)
-            .orElse(Collections.emptyList())
-            .stream().filter(ALL_CATEGORIES::contains).distinct().toList();
+    public RecommendResponseDto getRecommendedRoutines(List<String> requestedCategoryNames) {
+        List<String> requested = Optional.ofNullable(requestedCategoryNames)
+                .orElse(Collections.emptyList())
+                .stream().filter(ALL_CATEGORIES::contains).distinct().toList();
 
-        // 전 카테고리 조회/그룹
-        List < Routine > all = routineRepository.findRoutinesByCategoryNames(ALL_CATEGORIES);
-        Map < String, List < Routine >> byCat = all.stream()
-            .collect(Collectors.groupingBy(r -> r.getCategory().getValue()));
+        List<Routine> all = routineRepository.findRoutinesByCategoryNames(ALL_CATEGORIES);
+        Map<String, List<Routine>> byCat = all.stream()
+                .collect(Collectors.groupingBy(r -> r.getCategory().getValue()));
 
-        // 카테고리별 데크 준비(셔플 후 pop)
-        Map < String, Deque < Routine >> deck = new HashMap < > ();
-        for (String cat: ALL_CATEGORIES) {
-            List < Routine > list = new ArrayList < > (byCat.getOrDefault(cat, List.of()));
+        Map<String, Deque<Routine>> deck = new HashMap<>();
+        for (String cat : ALL_CATEGORIES) {
+            List<Routine> list = new ArrayList<>(byCat.getOrDefault(cat, List.of()));
             Collections.shuffle(list);
-            deck.put(cat, new ArrayDeque < > (list));
+            deck.put(cat, new ArrayDeque<>(list));
         }
 
-        List < Routine > result = new ArrayList < > (TOTAL_RECOMMEND_COUNT);
+        List<Routine> result = new ArrayList<>(TOTAL_RECOMMEND_COUNT);
 
-        // 1) 전 카테고리 최소 1개 보장
-        for (String cat: ALL_CATEGORIES) {
-            Deque < Routine > q = deck.get(cat);
+        for (String cat : ALL_CATEGORIES) {
+            Deque<Routine> q = deck.get(cat);
             if (q != null && !q.isEmpty()) result.add(q.pollFirst());
         }
 
-        // 2) 요청 가중치: 라운드로빈 + 무작위 시작 (+ 선택적 상한)
         int remaining = TOTAL_RECOMMEND_COUNT - result.size();
-        Map < String, Integer > taken = new HashMap < > ();
-        for (Routine r: result) taken.merge(r.getCategory().getValue(), 1, Integer::sum);
+        Map<String, Integer> taken = new HashMap<>();
+        for (Routine r : result) taken.merge(r.getCategory().getValue(), 1, Integer::sum);
 
-        List < String > order = new ArrayList < > (requested);
+        List<String> order = new ArrayList<>(requested);
         if (!order.isEmpty()) {
-            int start = new Random().nextInt(order.size()); // 편향 제거
+            int start = new Random().nextInt(order.size());
             Collections.rotate(order, -start);
         }
 
-        final int MAX_PER_CATEGORY = 3; // 선택: 한 카테고리 총 3개 초과 금지(과다 편중 방지)
+        final int MAX_PER_CATEGORY = 3;
 
         int idx = 0;
         while (remaining > 0 && !order.isEmpty()) {
             String cat = order.get(idx % order.size());
-            Deque < Routine > q = deck.get(cat);
+            Deque<Routine> q = deck.get(cat);
             int cur = taken.getOrDefault(cat, 0);
             if (q != null && !q.isEmpty() && cur < MAX_PER_CATEGORY) {
                 result.add(q.pollFirst());
@@ -92,18 +88,17 @@ public class RoutineService {
                 remaining--;
                 idx++;
             } else {
-                order.remove(cat); // 고갈/상한 도달 시 제외
+                order.remove(cat);
             }
         }
 
-        // 3) 아직 남으면 비요청에서 보충(상한 고려)
         if (remaining > 0) {
-            List < String > others = ALL_CATEGORIES.stream()
-                .filter(c -> !requested.contains(c)).toList();
+            List<String> others = ALL_CATEGORIES.stream()
+                    .filter(c -> !requested.contains(c)).toList();
             int j = 0;
             while (remaining > 0 && !others.isEmpty()) {
                 String cat = others.get(j % others.size());
-                Deque < Routine > q = deck.get(cat);
+                Deque<Routine> q = deck.get(cat);
                 int cur = taken.getOrDefault(cat, 0);
                 if (q != null && !q.isEmpty() && cur < MAX_PER_CATEGORY) {
                     result.add(q.pollFirst());
@@ -116,99 +111,434 @@ public class RoutineService {
 
         Collections.shuffle(result);
 
-        // DTO 매핑
-        List < RecommendedRoutineDto > dtoList = result.stream()
-            .map(r -> RecommendedRoutineDto.builder()
-                .rid(r.getRid())
-                .content(r.getContent())
-                .category(CategoryDto.builder()
-                    .categoryId(r.getCategory().getCategoryId())
-                    .value(r.getCategory().getValue())
-                    .build())
-                .build())
-            .toList();
+        List<RecommendedRoutineDto> dtoList = result.stream()
+                .map(r -> RecommendedRoutineDto.builder()
+                        .rid(r.getRid())
+                        .content(r.getContent())
+                        .category(CategoryDto.builder()
+                                .categoryId(r.getCategory().getCategoryId())
+                                .value(r.getCategory().getValue())
+                                .build())
+                        .build())
+                .toList();
 
         return RecommendResponseDto.builder()
-            .category(requested)
-            .recommend(dtoList)
-            .build();
+                .category(requested)
+                .recommend(dtoList)
+                .build();
     }
 
-    /**
-     * routines 테이블에 저장된 모든 루틴 정보를 조회합니다
-     * @return 모든 루틴 정보
-     */
-    @Transactional(readOnly = true) // 읽기 전용
-    public AllRoutinesResponseDto getAllRoutines() {
-        List < Routine > allRoutines = routineRepository.findAll();
-
-        List < RoutineDto > dtoList = allRoutines.stream()
-            .map(routine -> RoutineDto.builder()
-                .rid(routine.getRid())
-                .content(routine.getContent())
-                .category(CategoryDto.builder()
-                    .categoryId(routine.getCategory().getCategoryId())
-                    .value(routine.getCategory().getValue())
-                    .build())
-                .build())
-            .collect(Collectors.toList());
-
-        return AllRoutinesResponseDto.builder()
-            .routines(dtoList)
-            .build();
-    }
-
-    /**
-     * 모든 루틴 컬렉션 정보를 반환합니다.
-     * @return 루틴 컬렉션 정보
-     */
     @Transactional(readOnly = true)
-    public AllCollectionsResponseDto getAllRoutineCollections() {
-        // 1. 모든 루틴 컬렉션(패키지)을 조회합니다. (1번의 쿼리)
-        List < RoutineCollection > allCollections = routineCollectionRepository.findAll();
+    public AllRoutinesResponseDto getAllRoutines() {
+        List<Routine> allRoutines = routineRepository.findAll();
 
-        // 2. 모든 매퍼와 관련 루틴 정보를 한 번에 조회합니다. (1번의 쿼리)
-        List < RoutineCollectionMapper > allMappers = routineCollectionMapperRepository.findAllWithDetails();
-
-        // 3. 조회된 매퍼들을 collectionId를 기준으로 그룹화하여 Map으로 만듭니다. (메모리에서 처리)
-        // Key: collectionId, Value: 해당 collection에 속한 RoutineDto 리스트
-        Map < Integer, List < RoutineDto >> routinesByCollectionId = allMappers.stream()
-            .collect(Collectors.groupingBy(
-                mapper -> mapper.getRoutineCollection().getCollectionId(),
-                Collectors.mapping(
-                    mapper -> {
-                        var routine = mapper.getRoutine();
-                        return RoutineDto.builder()
-                            .rid(routine.getRid())
-                            .content(routine.getContent())
-                            .category(CategoryDto.builder()
+        List<RoutineDto> dtoList = allRoutines.stream()
+                .map(routine -> RoutineDto.builder()
+                        .rid(routine.getRid())
+                        .content(routine.getContent())
+                        .category(CategoryDto.builder()
                                 .categoryId(routine.getCategory().getCategoryId())
                                 .value(routine.getCategory().getValue())
                                 .build())
-                            .build();
-                    },
-                    Collectors.toList()
-                )
-            ));
+                        .build())
+                .collect(Collectors.toList());
 
-        // 4. 컬렉션 목록을 순회하며, 위에서 만든 Map을 이용해 각 컬렉션에 루틴 목록을 채워넣습니다.
-        List < CollectionDetailDto > resultDtoList = allCollections.stream()
-            .map(collection -> {
-                CollectionDetailDto dto = CollectionDetailDto.builder()
-                .collectionId(collection.getCollectionId())
-                .title(collection.getTitle())
-                .subTitle(collection.getSubTitle())
-                .guide(collection.getGuide())
+        return AllRoutinesResponseDto.builder()
+                .routines(dtoList)
                 .build();
-                // Map에서 해당 collectionId의 루틴 리스트를 찾아 설정합니다.
-                dto.setRoutines(routinesByCollectionId.get(collection.getCollectionId()));
-                return dto;
-            })
-            .collect(Collectors.toList());
+    }
 
-        // 5. 최종 응답 객체를 빌드하여 반환합니다.
+    @Transactional(readOnly = true)
+    public AllCollectionsResponseDto getAllRoutineCollections() {
+        List<RoutineCollection> allCollections = routineCollectionRepository.findAll();
+        List<RoutineCollectionMapper> allMappers = routineCollectionMapperRepository.findAllWithDetails();
+
+        Map<Integer, List<RoutineDto>> routinesByCollectionId = allMappers.stream()
+                .collect(Collectors.groupingBy(
+                        mapper -> mapper.getRoutineCollection().getCollectionId(),
+                        Collectors.mapping(
+                                mapper -> {
+                                    var routine = mapper.getRoutine();
+                                    return RoutineDto.builder()
+                                            .rid(routine.getRid())
+                                            .content(routine.getContent())
+                                            .category(CategoryDto.builder()
+                                                    .categoryId(routine.getCategory().getCategoryId())
+                                                    .value(routine.getCategory().getValue())
+                                                    .build())
+                                            .build();
+                                },
+                                Collectors.toList()
+                        )
+                ));
+
+        List<CollectionDetailDto> resultDtoList = allCollections.stream()
+                .map(collection -> {
+                    CollectionDetailDto dto = CollectionDetailDto.builder()
+                            .collectionId(collection.getCollectionId())
+                            .title(collection.getTitle())
+                            .subTitle(collection.getSubTitle())
+                            .guide(collection.getGuide())
+                            .build();
+                    dto.setRoutines(routinesByCollectionId.get(collection.getCollectionId()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
         return AllCollectionsResponseDto.builder()
-            .collections(resultDtoList)
-            .build();
+                .collections(resultDtoList)
+                .build();
+    }
+
+    // ==================== 4-1. 루틴 추가 ====================
+    @Transactional
+    public void addRoutinesToUser(String uid, RoutineAddRequestDto request) {
+        List<Routine> routines = routineRepository.findByRidIn(request.getRid());
+
+        if (routines.size() != request.getRid().size()) {
+            throw new IllegalArgumentException("존재하지 않는 루틴 ID가 포함되어 있습니다.");
+        }
+
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        for (Routine routine : routines) {
+            UserRoutine userRoutine = UserRoutine.builder()
+                    .userProfile(userProfile)
+                    .category(routine.getCategory())
+                    .content(routine.getContent())
+                    .notification(null)
+                    .build();
+            userRoutineRepository.save(userRoutine);
+        }
+    }
+
+    // ==================== 4-2. 루틴 추가 - 직접 작성 ====================
+    @Transactional
+    public void addCustomRoutineToUser(String uid, RoutineAddCustomRequestDto request) {
+        if (request.getCategoryId() == null || request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("카테고리 ID와 루틴 내용은 필수입니다.");
+        }
+
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+
+        UserRoutine userRoutine = UserRoutine.builder()
+                .userProfile(userProfile)
+                .category(category)
+                .content(request.getContent().trim())
+                .notification(null)
+                .build();
+        userRoutineRepository.save(userRoutine);
+    }
+
+    // ==================== 4-3. 사용자 루틴 정보 반환 ====================
+    @Transactional(readOnly = true)
+    public PersonalRoutineResponseDto getPersonalRoutines(String uid) {
+        List<UserRoutine> userRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
+        LocalDate today = LocalDate.now();
+
+        List<UserAttainment> todayAttainments = userAttainmentRepository
+                .findByUserProfile_UidAndTimestampBetween(uid, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        Set<Integer> completedRoutineIds = todayAttainments.stream()
+                .map(ua -> ua.getUserRoutine().getId())
+                .collect(Collectors.toSet());
+
+        List<PersonalRoutineItemDto> routineItems = userRoutines.stream()
+                .map(userRoutine -> {
+                    CategoryDto categoryDto = null;
+                    if (userRoutine.getCategory() != null) {
+                        categoryDto = CategoryDto.builder()
+                                .categoryId(userRoutine.getCategory().getCategoryId())
+                                .value(userRoutine.getCategory().getValue())
+                                .build();
+                    }
+
+                    boolean isComplete = completedRoutineIds.contains(userRoutine.getId());
+
+                    return PersonalRoutineItemDto.builder()
+                            .id(userRoutine.getId())
+                            .category(categoryDto)
+                            .content(userRoutine.getContent())
+                            .notification(userRoutine.getNotification() != null ? userRoutine.getNotification().toString() : null)
+                            .complete(isComplete)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return PersonalRoutineResponseDto.builder()
+                .routines(routineItems)
+                .build();
+    }
+
+    // ==================== 4-4. 특정 루틴 정보 반환 ====================
+    @Transactional(readOnly = true)
+    public SingleRoutineResponseDto getRoutineById(Integer id, String tokenUid) {
+        UserRoutine userRoutine = userRoutineRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
+
+        if (!userRoutine.getUserProfile().getUid().equals(tokenUid)) {
+            throw new IllegalArgumentException("본인의 루틴만 조회할 수 있습니다.");
+        }
+
+        CategoryDto categoryDto = null;
+        if (userRoutine.getCategory() != null) {
+            categoryDto = CategoryDto.builder()
+                    .categoryId(userRoutine.getCategory().getCategoryId())
+                    .value(userRoutine.getCategory().getValue())
+                    .build();
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean isComplete = userAttainmentRepository.existsByUserRoutine_IdAndTimestampBetween(
+                id, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        PersonalRoutineItemDto routineDto = PersonalRoutineItemDto.builder()
+                .id(userRoutine.getId())
+                .category(categoryDto)
+                .content(userRoutine.getContent())
+                .notification(userRoutine.getNotification() != null ? userRoutine.getNotification().toString() : null)
+                .complete(isComplete)
+                .build();
+
+        return SingleRoutineResponseDto.builder()
+                .routine(routineDto)
+                .build();
+    }
+
+    // ==================== 4-5. 사용자 루틴 수정 ====================
+    @Transactional
+    public void updateRoutine(Integer id, RoutineUpdateRequestDto request, String tokenUid) {
+        UserRoutine userRoutine = userRoutineRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
+
+        if (!userRoutine.getUserProfile().getUid().equals(tokenUid)) {
+            throw new IllegalArgumentException("본인의 루틴만 수정할 수 있습니다.");
+        }
+
+        Category category = categoryRepository.findByCategoryId(request.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+
+        userRoutine.setCategory(category);
+        userRoutine.setContent(request.getContent());
+        userRoutineRepository.save(userRoutine);
+    }
+
+    // ==================== 4-6. 사용자 루틴 삭제 ====================
+    @Transactional
+    public void deleteRoutine(Integer id, String tokenUid) {
+        UserRoutine userRoutine = userRoutineRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
+
+        if (!userRoutine.getUserProfile().getUid().equals(tokenUid)) {
+            throw new IllegalArgumentException("본인의 루틴만 삭제할 수 있습니다.");
+        }
+
+        userRoutineRepository.delete(userRoutine);
+    }
+
+    // ==================== 4-7. 사용자 루틴 달성 체크 ====================
+    @Transactional
+    public void checkRoutineAttainment(String uid, Integer routineId) {
+        UserRoutine userRoutine = userRoutineRepository.findById(routineId)
+                .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
+
+        if (!userRoutine.getUserProfile().getUid().equals(uid)) {
+            throw new IllegalArgumentException("본인의 루틴만 체크할 수 있습니다.");
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean alreadyChecked = userAttainmentRepository.existsByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
+                uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        if (alreadyChecked) {
+            throw new IllegalArgumentException("이미 체크된 루틴입니다.");
+        }
+
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        UserAttainment attainment = UserAttainment.builder()
+                .userProfile(userProfile)
+                .userRoutine(userRoutine)
+                .timestamp(LocalDateTime.now())
+                .build();
+        userAttainmentRepository.save(attainment);
+    }
+
+    // ==================== 4-8. 사용자 루틴 체크 해제 ====================
+    @Transactional
+    public void uncheckRoutineAttainment(String uid, Integer routineId) {
+        LocalDate today = LocalDate.now();
+        userAttainmentRepository.deleteByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
+                uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+    }
+
+    // ==================== 4-9. Sera 추천 루틴 정보 반환 ====================
+    @Transactional(readOnly = true)
+    public RecommendRoutineResponseDto getRecommendRoutines(String uid) {
+        List<RoutineSera> seraRoutines = routineSeraRepository.findByUserProfile_Uid(uid);
+        LocalDate today = LocalDate.now();
+
+        List<RoutineSeraAttainment> todayAttainments = routineSeraAttainmentRepository
+                .findByUserProfile_UidAndTimestampBetween(uid, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        Set<Integer> completedRoutineIds = todayAttainments.stream()
+                .map(rsa -> rsa.getRoutineSera().getId())
+                .collect(Collectors.toSet());
+
+        List<RecommendRoutineItemDto> routineItems = seraRoutines.stream()
+                .map(seraRoutine -> {
+                    CategoryDto categoryDto = null;
+                    if (seraRoutine.getCategory() != null) {
+                        categoryDto = CategoryDto.builder()
+                                .categoryId(seraRoutine.getCategory().getCategoryId())
+                                .value(seraRoutine.getCategory().getValue())
+                                .build();
+                    }
+
+                    boolean isComplete = completedRoutineIds.contains(seraRoutine.getId());
+
+                    return RecommendRoutineItemDto.builder()
+                            .id(seraRoutine.getId())
+                            .category(categoryDto)
+                            .content(seraRoutine.getContent())
+                            .complete(isComplete)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return RecommendRoutineResponseDto.builder()
+                .routines(routineItems)
+                .build();
+    }
+
+    // ==================== 4-10. Sera 추천 루틴 달성 체크 ====================
+    @Transactional
+    public void checkSeraRoutineAttainment(String uid, Integer routineId) {
+        RoutineSera seraRoutine = routineSeraRepository.findById(routineId)
+                .orElseThrow(() -> new IllegalArgumentException("Sera 루틴을 찾을 수 없습니다."));
+
+        if (!seraRoutine.getUserProfile().getUid().equals(uid)) {
+            throw new IllegalArgumentException("본인의 Sera 루틴만 체크할 수 있습니다.");
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean alreadyChecked = routineSeraAttainmentRepository.existsByUserProfile_UidAndRoutineSera_IdAndTimestampBetween(
+                uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        if (alreadyChecked) {
+            throw new IllegalArgumentException("이미 체크된 Sera 루틴입니다.");
+        }
+
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        RoutineSeraAttainment attainment = RoutineSeraAttainment.builder()
+                .userProfile(userProfile)
+                .routineSera(seraRoutine)
+                .timestamp(LocalDateTime.now())
+                .build();
+        routineSeraAttainmentRepository.save(attainment);
+
+        userProfile.setLux(userProfile.getLux() + SERA_ROUTINE_LUX_BONUS);
+        userProfileRepository.save(userProfile);
+    }
+
+    // ==================== 4-11. 챌린지 미션 - 발생 여부 조회 ====================
+    @Transactional(readOnly = true)
+    public ChallengeStatusResponseDto getChallengeStatus(String uid) {
+        Optional<ChallengeUser> challengeUserOpt = challengeUserRepository.findById(uid);
+
+        if (challengeUserOpt.isEmpty()) {
+            return ChallengeStatusResponseDto.builder()
+                    .challenge(null)
+                    .participants(0)
+                    .isTarget(false)
+                    .check(false)
+                    .build();
+        }
+
+        ChallengeUser challengeUser = challengeUserOpt.get();
+
+        if (challengeUser.getChallengeCategoryId() == null || challengeUser.getChallengeContent() == null) {
+            return ChallengeStatusResponseDto.builder()
+                    .challenge(null)
+                    .participants(0)
+                    .isTarget(false)
+                    .check(false)
+                    .build();
+        }
+
+        Category category = categoryRepository.findById(challengeUser.getChallengeCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+
+        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime endOfDay = LocalDateTime.now().toLocalDate().plusDays(1).atStartOfDay();
+
+        int participants = challengeUserRepository.countByChallengeCategoryIdAndChallengeContentAndDatetimeBetween(
+                challengeUser.getChallengeCategoryId(),
+                challengeUser.getChallengeContent(),
+                startOfDay,
+                endOfDay
+        );
+
+        CategoryDto categoryDto = CategoryDto.builder()
+                .categoryId(category.getCategoryId())
+                .value(category.getValue())
+                .build();
+
+        ChallengeInfoDto challengeDto = ChallengeInfoDto.builder()
+                .category(categoryDto)
+                .content(challengeUser.getChallengeContent())
+                .build();
+
+        return ChallengeStatusResponseDto.builder()
+                .challenge(challengeDto)
+                .participants(participants)
+                .isTarget(true)
+                .check(challengeUser.getCheck() != null)
+                .build();
+    }
+
+    // ==================== 4-12. 챌린지 미션 - 도전 수락 ====================
+    @Transactional
+    public void acceptChallenge(String uid) {
+        ChallengeUser challengeUser = challengeUserRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("챌린지 대상자가 아닙니다."));
+
+        challengeUser.setCheck(false);
+        challengeUserRepository.save(challengeUser);
+    }
+
+    // ==================== 4-13. 챌린지 미션 - 다음에 ====================
+    @Transactional
+    public void postponeChallenge(String uid) {
+        ChallengeUser challengeUser = challengeUserRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("챌린지 대상자가 아닙니다."));
+
+        challengeUserRepository.delete(challengeUser);
+    }
+
+    // ==================== 4-14. 챌린지 미션 - 달성 체크 ====================
+    @Transactional
+    public void completeChallengeAttainment(String uid) {
+        ChallengeUser challengeUser = challengeUserRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("챌린지 대상자가 아닙니다."));
+
+        if (challengeUser.getCheck() == null) {
+            throw new IllegalArgumentException("먼저 챌린지에 도전해야 합니다.");
+        }
+
+        if (Boolean.TRUE.equals(challengeUser.getCheck())) {
+            throw new IllegalArgumentException("이미 달성 완료한 챌린지입니다.");
+        }
+
+        challengeUser.setCheck(true);
+        challengeUserRepository.save(challengeUser);
     }
 }
