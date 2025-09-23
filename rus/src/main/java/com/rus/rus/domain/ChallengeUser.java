@@ -28,6 +28,12 @@ public class ChallengeUser {
     @Column(name = "`check`")
     private Boolean check; // 루틴 달성 여부
 
-    @Column(name = "datetime")
+        @Column(name = "datetime")
     private LocalDateTime datetime; // 날짜 구분용
+
+    @Column(name = "challenge_category_id")
+    private Integer challengeCategoryId;
+
+    @Column(name = "challenge_content")
+    private String challengeContent;
 }

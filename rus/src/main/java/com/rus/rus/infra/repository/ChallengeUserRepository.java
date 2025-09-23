@@ -5,6 +5,9 @@ import org.springframework.stereotype.Repository;
 
 import com.rus.rus.domain.ChallengeUser;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 @Repository
 public interface ChallengeUserRepository extends JpaRepository<ChallengeUser, String> {
     /**
@@ -12,5 +15,13 @@ public interface ChallengeUserRepository extends JpaRepository<ChallengeUser, St
      * challenge_users 테이블의 데이터는 매일 초기화되므로, 날짜 조건 없이 조회합니다.
      * @return 완료한 사용자 수
      */
+    Optional<ChallengeUser> findByUid(String uid);
     long countByCheckIsTrue();
+
+    int countByChallengeCategoryIdAndChallengeContentAndDatetimeBetween(
+            Integer challengeCategoryId,
+            String challengeContent,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
