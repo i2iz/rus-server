@@ -3,7 +3,6 @@ package com.rus.rus.controller;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import org.hibernate.annotations.Parameter;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
