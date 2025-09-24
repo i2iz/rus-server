@@ -53,7 +53,8 @@ public class SecurityConfig {
                 "/routine/recommend",
                 "/routine",
                 "/routine/challenge",
-                "/routine/collections").permitAll();
+                "/routine/collections",
+                "/users/ranking").permitAll();
 
                 if (swaggerEnabled) {
                     // Swagger UI 및 API docs에 인증 없이 접근 허용

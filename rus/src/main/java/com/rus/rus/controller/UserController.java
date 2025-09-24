@@ -24,6 +24,7 @@ import com.rus.rus.controller.dto.req.EditProfileRequestDto;
 import com.rus.rus.controller.dto.req.EditSettingRequestDto;
 import com.rus.rus.controller.dto.res.StatisticsResponseDto;
 import com.rus.rus.controller.dto.res.UserProfileResponseDto;
+import com.rus.rus.controller.dto.res.UserRankingResponseDto;
 import com.rus.rus.controller.dto.res.UserSettingResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -171,6 +172,16 @@ public class UserController {
 
         // 사용자의 통계 기록 조회
         StatisticsResponseDto responseDto = statisticsService.getUserRoutineStatistics(uid, startDay, endDay);
+        return ResponseEntity.ok(responseDto);
+    }
+
+    /**
+     * 모든 사용자의 랭킹 정보를 반환합니다.
+     * @return 랭킹 정보 목록
+     */
+    @GetMapping("/ranking")
+    public ResponseEntity<UserRankingResponseDto> getRanking() {
+        UserRankingResponseDto responseDto = userService.getUserRankings();
         return ResponseEntity.ok(responseDto);
     }
 }

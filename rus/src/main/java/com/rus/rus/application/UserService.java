@@ -1,15 +1,21 @@
 package com.rus.rus.application;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.rus.rus.common.ApiException;
+import com.rus.rus.controller.dto.UserRankingItemDto;
 import com.rus.rus.controller.dto.req.EditProfileRequestDto;
 import com.rus.rus.controller.dto.req.EditSettingRequestDto;
 import com.rus.rus.controller.dto.res.UserProfileResponseDto;
+import com.rus.rus.controller.dto.res.UserRankingResponseDto;
 import com.rus.rus.controller.dto.res.UserSettingResponseDto;
 import com.rus.rus.domain.Title;
 import com.rus.rus.domain.UserProfile;
@@ -135,5 +141,33 @@ public class UserService {
         userSetting.setTitle(title);
         userSetting.setBackgroundColor(requestDto.getBackgroundColor());
         userSetting.setLumiImage(requestDto.getLumiImage());
+    }
+
+    /**
+     * 모든 사용자의 랭킹 정보를 반환합니다.
+     *
+     * @return 랭킹 정보 목록
+     */
+    @Transactional(readOnly = true)
+    public UserRankingResponseDto getUserRankings() {
+        // 1. 모든 사용자 프로필을 lux 기준으로 내림차순 정렬하여 조회합니다.
+        List<UserProfile> userProfiles = userProfileRepository.findAll();
+        userProfiles.sort(Comparator.comparingInt(UserProfile::getLux).reversed());
+
+        // 2. 모든 사용자 설정을 조회하여 Map으로 변환합니다 (빠른 조회를 위해).
+        Map<String, UserSetting> userSettingsMap = userSettingRepository.findAll().stream()
+                .collect(Collectors.toMap(UserSetting::getUid, setting -> setting));
+
+        // 3. 정렬된 프로필과 설정 데이터를 결합하여 DTO 목록을 생성합니다.
+        List<UserRankingItemDto> rankingList = userProfiles.stream()
+                .map(profile -> {
+                    UserSetting setting = userSettingsMap.get(profile.getUid());
+                    return UserRankingItemDto.from(profile, setting);
+                })
+                .collect(Collectors.toList());
+
+        return UserRankingResponseDto.builder()
+                .rankings(rankingList)
+                .build();
     }
 }
