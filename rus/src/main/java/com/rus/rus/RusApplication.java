@@ -4,10 +4,12 @@ import java.util.TimeZone;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import jakarta.annotation.PostConstruct;
 
 @SpringBootApplication
+@EnableScheduling // 스케쥴링 코드 추가
 public class RusApplication {
 
 	/**
