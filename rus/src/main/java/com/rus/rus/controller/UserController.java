@@ -173,4 +173,25 @@ public class UserController {
         StatisticsResponseDto responseDto = statisticsService.getUserRoutineStatistics(uid, startDay, endDay);
         return ResponseEntity.ok(responseDto);
     }
+
+    /**
+     * 사용자의 첫 로그인 상태를 true로 변경
+     * @param uid 사용자 uid
+     * @param userDetails Authentication된 사용자의 정보가 저장
+     * @return
+     */
+    @PatchMapping("/isfirstlogin/{uid}")
+    public ResponseEntity<Void> updateIsFirstLogin(
+        @PathVariable("uid") UUID uid,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+
+        if (!currentUserId.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인 외 사용자의 정보는 수정할 수 없습니다.");
+        }
+
+        userService.updateIsFirstLogin(uid);
+
+        return ResponseEntity.noContent().build();
+    }
 }
