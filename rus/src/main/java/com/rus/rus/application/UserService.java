@@ -136,4 +136,16 @@ public class UserService {
         userSetting.setBackgroundColor(requestDto.getBackgroundColor());
         userSetting.setLumiImage(requestDto.getLumiImage());
     }
+
+    /**
+     * 사용자 프로필의 isFirstLogin 상태를 true로 업데이트합니다.
+     * @param uid 사용자 고유 식별자
+     */
+    @Transactional
+    public void updateIsFirstLogin(UUID uid) {
+        UserProfile userProfile = userProfileRepository.findById(uid.toString())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        userProfile.setFirstLogin(true);
+    }
 }
