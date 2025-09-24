@@ -3,6 +3,7 @@ package com.rus.rus.application;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,11 @@ public class AttendanceService {
         WeeklyAttendance attendance = weeklyAttendanceRepository.findById(uid.toString())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자의 출석부 정보를 찾을 수 없습니다."));
 
+        // 현재 주의 시작일(월요일)과 종료일(일요일)을 계산합니다
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+
         // 2. 조회된 엔티티의 데이터를 DTO로 변환하여 반환합니다.
         //    timestamp는 API 명세에 따라 현재 시간으로 설정합니다.
         return AttendanceResponseDto.builder()
@@ -50,6 +56,8 @@ public class AttendanceService {
                 .fri(attendance.getFri())
                 .sat(attendance.getSat())
                 .sun(attendance.getSun())
+                .startDate(startDate)
+                .endDate(endDate)
                 .build();
     }
 
