@@ -30,11 +30,11 @@ public class UserProfile {
 
   @Builder.Default
   @Column(nullable = false)
-  private int level = 1; // 기본값 1
+  private int level = 1;
 
   @Builder.Default
   @Column(nullable = false)
-  private Integer lux=0;
+  private Integer lux = 0;
 
   @Builder.Default
   @Column(nullable = false)
@@ -50,15 +50,21 @@ public class UserProfile {
   private String email;
 
   @Builder.Default
-  private Double height=0.0; // 기본값 0.0
+  private Double height = 0.0;
 
   @Builder.Default
-  private Double weight=0.0; // 기본값 0.0
+  private Double weight = 0.0;
+
+  @Builder.Default  // ⭐ 추가
+  @Column(name = "streak")
+  private Integer streak = 0;
+
+  @Column(name = "last_streak_date")
+  private LocalDate lastStreakDate;
 
   @PrePersist
   public void prePersist() {
     if(this.createdAt == null) {
-      // UTC+9 기준 현재 시간으로 세팅
       this.createdAt = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toLocalDateTime();
     }
   }
