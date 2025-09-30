@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.rus.rus.common.ApiException;
 import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
 import com.rus.rus.controller.dto.req.RoutineAddRequestDto;
 import com.rus.rus.controller.dto.req.RoutineUpdateRequestDto;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,8 @@ public class RoutineService {
     private final RoutineSeraAttainmentRepository routineSeraAttainmentRepository;
     private final UserProfileRepository userProfileRepository;
     private final ChallengeUserRepository challengeUserRepository;
+    private final RecoveryMissionRepository recoveryMissionRepository;
+    private final RecoveryMissionItemRepository recoveryMissionItemRepository;
 
     /**
      * 요청된 카테고리에 가중치를 부여하여 총 10개의 루틴을 추천합니다.
@@ -341,6 +345,7 @@ public class RoutineService {
         userRoutineRepository.delete(userRoutine);
     }
 
+    /*
     // ==================== 4-7. 사용자 루틴 달성 체크 ====================
     @Transactional
     public void checkRoutineAttainment(String uid, Integer routineId) {
@@ -369,7 +374,7 @@ public class RoutineService {
                 .build();
         userAttainmentRepository.save(attainment);
     }
-
+    */
     // ==================== 4-8. 사용자 루틴 체크 해제 ====================
     @Transactional
     public void uncheckRoutineAttainment(String uid, Integer routineId) {
@@ -541,4 +546,231 @@ public class RoutineService {
         challengeUser.setCheck(true);
         challengeUserRepository.save(challengeUser);
     }
+
+    @Transactional(readOnly = true)
+    public RecoveryStatusResponseDto getRecoveryStatus(String uid) {
+        Optional<RecoveryMission> recoveryOpt = recoveryMissionRepository.findByUid(uid);
+
+        if (recoveryOpt.isEmpty()) {
+            return RecoveryStatusResponseDto.builder()
+                    .recoveryAvailable(false)
+                    .deadline(null)
+                    .originalStreak(0)
+                    .missions(Collections.emptyList())
+                    .allCompleted(false)
+                    .build();
+        }
+
+        RecoveryMission recovery = recoveryOpt.get();
+
+        // 마감일 체크
+        if (LocalDate.now().isAfter(recovery.getDeadline())) {
+            return RecoveryStatusResponseDto.builder()
+                    .recoveryAvailable(false)
+                    .deadline(recovery.getDeadline())
+                    .originalStreak(recovery.getOriginalStreak())
+                    .missions(Collections.emptyList())
+                    .allCompleted(false)
+                    .build();
+        }
+
+        // 리커버리 미션 목록 조회
+        List<RecoveryMissionItem> missionItems = recoveryMissionItemRepository.findByRecoveryMission(recovery);
+
+        List<RecoveryMissionDto> missionDtos = missionItems.stream()
+                .map(item -> {
+                    Routine routine = item.getRoutine();
+                    return RecoveryMissionDto.builder()
+                            .rid(routine.getRid())
+                            .category(CategoryDto.builder()
+                                    .categoryId(routine.getCategory().getCategoryId())
+                                    .value(routine.getCategory().getValue())
+                                    .build())
+                            .content(routine.getContent())
+                            .completed(item.getCompleted())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        boolean allCompleted = missionItems.stream().allMatch(RecoveryMissionItem::getCompleted);
+
+        return RecoveryStatusResponseDto.builder()
+                .recoveryAvailable(true)
+                .deadline(recovery.getDeadline())
+                .originalStreak(recovery.getOriginalStreak())
+                .missions(missionDtos)
+                .allCompleted(allCompleted)
+                .build();
+    }
+
+    // 4-15-2. 리커버리 미션 달성 체크
+    @Transactional
+    public RecoveryAttainmentResponseDto checkRecoveryAttainment(String uid, Integer rid) {
+        RecoveryMission recovery = recoveryMissionRepository.findByUid(uid)
+                .orElseThrow(() -> new IllegalArgumentException("리커버리 미션이 없습니다."));
+
+        // 마감일 체크
+        if (LocalDate.now().isAfter(recovery.getDeadline())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "리커버리 미션 기간이 만료되었습니다.");
+        }
+
+        // 해당 미션 찾기
+        RecoveryMissionItem missionItem = recoveryMissionItemRepository
+                .findByRecoveryMissionAndRoutine_Rid(recovery, rid)
+                .orElseThrow(() -> new IllegalArgumentException("해당 리커버리 미션을 찾을 수 없습니다."));
+
+        if (missionItem.getCompleted()) {
+            throw new ApiException(HttpStatus.CONFLICT, "이미 완료된 미션입니다.");
+        }
+
+        // 미션 완료 처리
+        missionItem.setCompleted(true);
+        recoveryMissionItemRepository.save(missionItem);
+
+        // 모든 미션 완료 확인
+        List<RecoveryMissionItem> allMissions = recoveryMissionItemRepository.findByRecoveryMission(recovery);
+        boolean allCompleted = allMissions.stream().allMatch(RecoveryMissionItem::getCompleted);
+
+        boolean streakRestored = false;
+        int newStreak = 0;
+
+        if (allCompleted) {
+            // 연속 달성 일수 복구
+            UserProfile userProfile = userProfileRepository.findById(uid)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+            newStreak = recovery.getOriginalStreak() + 1;
+            userProfile.setStreak(newStreak);
+            userProfile.setLastStreakDate(LocalDate.now());
+            userProfileRepository.save(userProfile);
+
+            // 리커버리 미션 삭제
+            recoveryMissionItemRepository.deleteAll(allMissions);
+            recoveryMissionRepository.delete(recovery);
+
+            streakRestored = true;
+        }
+
+        return RecoveryAttainmentResponseDto.builder()
+                .message("리커버리 미션이 완료되었습니다!")
+                .allCompleted(allCompleted)
+                .streakRestored(streakRestored)
+                .newStreak(newStreak)
+                .build();
+    }
+
+    // 4-15-3. 연속 달성 일수 조회
+    @Transactional(readOnly = true)
+    public StreakResponseDto getStreak(String uid) {
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 리커버리 상태 확인
+        Optional<RecoveryMission> recoveryOpt = recoveryMissionRepository.findByUid(uid);
+        RecoveryStatusDto recoveryStatus;
+
+        if (recoveryOpt.isPresent() && !LocalDate.now().isAfter(recoveryOpt.get().getDeadline())) {
+            RecoveryMission recovery = recoveryOpt.get();
+            recoveryStatus = RecoveryStatusDto.builder()
+                    .available(true)
+                    .deadline(recovery.getDeadline())
+                    .originalStreak(recovery.getOriginalStreak())
+                    .build();
+        } else {
+            recoveryStatus = RecoveryStatusDto.builder()
+                    .available(false)
+                    .deadline(null)
+                    .originalStreak(0)
+                    .build();
+        }
+
+        // 오늘의 진행률 계산
+        List<UserRoutine> userRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
+        LocalDate today = LocalDate.now();
+        List<UserAttainment> todayAttainments = userAttainmentRepository
+                .findByUserProfile_UidAndTimestampBetween(uid, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        int totalRoutines = userRoutines.size();
+        int completedRoutines = todayAttainments.size();
+        double completionRate = totalRoutines > 0 ? (completedRoutines * 100.0 / totalRoutines) : 0.0;
+
+        TodayProgressDto todayProgress = TodayProgressDto.builder()
+                .totalRoutines(totalRoutines)
+                .completedRoutines(completedRoutines)
+                .completionRate(Math.round(completionRate * 10.0) / 10.0)
+                .build();
+
+        return StreakResponseDto.builder()
+                .currentStreak(userProfile.getStreak())
+                .lastSuccessDate(userProfile.getLastStreakDate())
+                .recoveryStatus(recoveryStatus)
+                .todayProgress(todayProgress)
+                .build();
+    }
+
+    // 4-7 수정: 연속 달성 일수 업데이트 로직 추가
+    @Transactional
+    public void checkRoutineAttainment(String uid, Integer routineId) {
+        UserRoutine userRoutine = userRoutineRepository.findById(routineId)
+                .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
+
+        if (!userRoutine.getUserProfile().getUid().equals(uid)) {
+            throw new IllegalArgumentException("본인의 루틴만 체크할 수 있습니다.");
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean alreadyChecked = userAttainmentRepository.existsByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
+                uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        if (alreadyChecked) {
+            throw new IllegalArgumentException("이미 체크된 루틴입니다.");
+        }
+
+        UserProfile userProfile = userProfileRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        UserAttainment attainment = UserAttainment.builder()
+                .userProfile(userProfile)
+                .userRoutine(userRoutine)
+                .timestamp(LocalDateTime.now())
+                .build();
+        userAttainmentRepository.save(attainment);
+
+        // ⭐ 모든 루틴 완료 확인 및 스트릭 업데이트
+        updateStreakOnCompletion(uid);
+    }
+
+    // 연속 달성 일수 업데이트 로직
+    private void updateStreakOnCompletion(String uid) {
+        List<UserRoutine> allRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
+        LocalDate today = LocalDate.now();
+        List<UserAttainment> todayAttainments = userAttainmentRepository
+                .findByUserProfile_UidAndTimestampBetween(uid, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        Set<Integer> completedRoutineIds = todayAttainments.stream()
+                .map(ua -> ua.getUserRoutine().getId())
+                .collect(Collectors.toSet());
+
+        boolean allCompleted = allRoutines.stream()
+                .allMatch(routine -> completedRoutineIds.contains(routine.getId()));
+
+        if (allCompleted) {
+            UserProfile userProfile = userProfileRepository.findById(uid)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+            LocalDate lastStreakDate = userProfile.getLastStreakDate();
+
+            // 어제 완료했으면 연속, 아니면 1부터 시작
+            if (lastStreakDate != null && lastStreakDate.equals(today.minusDays(1))) {
+                userProfile.setStreak(userProfile.getStreak() + 1);
+            } else {
+                userProfile.setStreak(1);
+            }
+
+            userProfile.setLastStreakDate(today);
+            userProfileRepository.save(userProfile);
+        }
+    }
+
+
 }

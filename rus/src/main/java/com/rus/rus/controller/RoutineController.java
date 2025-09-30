@@ -298,4 +298,52 @@ public class RoutineController {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "유효하지 않은 JWT 토큰입니다.");
         }
     }
+
+    @GetMapping("/recovery/status/{uid}")
+    public ResponseEntity<RecoveryStatusResponseDto> getRecoveryStatus(
+            @PathVariable String uid,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String tokenUid = extractUidFromToken(authHeader);
+
+        if (!tokenUid.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "해당 사용자의 리커버리 상태를 조회할 권한이 없습니다.");
+        }
+
+        RecoveryStatusResponseDto response = routineService.getRecoveryStatus(uid);
+        return ResponseEntity.ok(response);
+    }
+
+    // 4-15-2. 리커버리 미션 달성 체크
+    @PostMapping("/recovery/attainment/{uid}")
+    public ResponseEntity<RecoveryAttainmentResponseDto> checkRecoveryAttainment(
+            @PathVariable String uid,
+            @RequestBody RecoveryAttainmentRequestDto request,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String tokenUid = extractUidFromToken(authHeader);
+
+        if (!tokenUid.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "해당 사용자의 리커버리 미션을 완료할 권한이 없습니다.");
+        }
+
+        RecoveryAttainmentResponseDto response = routineService.checkRecoveryAttainment(uid, request.getRid());
+        return ResponseEntity.ok(response);
+    }
+
+    // 4-15-3. 연속 달성 일수 조회
+    @GetMapping("/streak/{uid}")
+    public ResponseEntity<StreakResponseDto> getStreak(
+            @PathVariable String uid,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String tokenUid = extractUidFromToken(authHeader);
+
+        if (!tokenUid.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "해당 사용자의 연속 달성 일수를 조회할 권한이 없습니다.");
+        }
+
+        StreakResponseDto response = routineService.getStreak(uid);
+        return ResponseEntity.ok(response);
+    }
 }
