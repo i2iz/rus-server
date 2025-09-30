@@ -3,6 +3,7 @@ package com.rus.rus.controller;
 import java.util.Arrays;
 import java.util.List;
 
+import com.rus.rus.controller.dto.CollectionDetailDto;
 import com.rus.rus.controller.dto.req.*;
 import com.rus.rus.controller.dto.res.*;
 import com.rus.rus.security.JwtUtil;
@@ -21,8 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/routine")
 public class RoutineController {
 
-    private static final List<String> ALLOWED_CATEGORIES =
-            Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
+    private static final List<String> ALLOWED_CATEGORIES = Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
 
     private final RoutineService routineService;
     private final ChallengeService challengeService;
@@ -30,13 +30,12 @@ public class RoutineController {
 
     @GetMapping("/recommend")
     public ResponseEntity<RecommendResponseDto> getRecommendedRoutines(
-            @RequestParam("category") List<String> categories
-    ) {
+            @RequestParam("category") List<String> categories) {
         if (categories == null || categories.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "하나 이상의 카테고리를 지정해야 합니다.");
         }
 
-        for (String categoryName: categories) {
+        for (String categoryName : categories) {
             if (!ALLOWED_CATEGORIES.contains(categoryName)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리 이름입니다: " + categoryName);
             }
@@ -297,5 +296,18 @@ public class RoutineController {
         } catch (Exception e) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "유효하지 않은 JWT 토큰입니다.");
         }
+    }
+
+    /**
+     * 특정 루틴 컬렉션 ID에 해당하는 루틴 모음 정보를 반환합니다.
+     * 
+     * @param collectionId 루틴 컬렉션 ID
+     * @return 특정 컬렉션의 상세 정보
+     */
+    @GetMapping("/collections/{collectionId}")
+    public ResponseEntity<CollectionDetailDto> getRoutineCollection(
+            @PathVariable Integer collectionId) {
+        CollectionDetailDto responseDto = routineService.getRoutineCollectionById(collectionId);
+        return ResponseEntity.ok(responseDto);
     }
 }
