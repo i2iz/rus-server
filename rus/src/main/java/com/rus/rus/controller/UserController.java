@@ -23,6 +23,7 @@ import com.rus.rus.controller.dto.req.EditProfileRequestDto;
 import com.rus.rus.controller.dto.req.EditSettingRequestDto;
 import com.rus.rus.controller.dto.res.StatisticsResponseDto;
 import com.rus.rus.controller.dto.res.UserProfileResponseDto;
+import com.rus.rus.controller.dto.res.UserRankingResponseDto;
 import com.rus.rus.controller.dto.res.UserSettingResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -38,15 +39,15 @@ public class UserController {
     /**
      * 사용자 프로필 조회
      * - 현재 로그인한 사용자의 프로필 정보를 조회합니다.
-     * @param uid 사용자 uid
+     * 
+     * @param uid         사용자 uid
      * @param userDetails Authentication된 사용자의 정보가 저장
      * @return
      */
     @GetMapping("/profile/{uid}")
-    public ResponseEntity < UserProfileResponseDto > getUserProfile(
-        @PathVariable("uid") UUID uid,
-        @AuthenticationPrincipal UserDetails userDetails
-    ) {
+    public ResponseEntity<UserProfileResponseDto> getUserProfile(
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
 
         System.out.println(currentUserId);
@@ -62,15 +63,15 @@ public class UserController {
     /**
      * 사용자 설정값 조회
      * - 현재 로그인한 사용자의 UI 및 칭호 설정값 정보를 반환합니다.
-     * @param uid 사용자 uid
+     * 
+     * @param uid         사용자 uid
      * @param userDetails Authentication된 사용자의 정보가 저장
      * @return
      */
     @GetMapping("/settings/{uid}")
-    public ResponseEntity < UserSettingResponseDto > getUserSetting(
-        @PathVariable("uid") UUID uid,
-        @AuthenticationPrincipal UserDetails userDetails
-    ) {
+    public ResponseEntity<UserSettingResponseDto> getUserSetting(
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
 
         System.out.println(currentUserId);
@@ -86,16 +87,17 @@ public class UserController {
     /**
      * 사용자 프로필 수정
      * 프로필 정보(이름, 생년월일, 성별, 키&몸무게)를 수정합니다.
-     * @param entity 수정할 정보
+     * 
+     * @param entity      수정할 정보
      * @param userDetails Authentication된 사용자의 정보가 저장
-     * @param uid 사용자 uid
+     * @param uid         사용자 uid
      * @return
      */
     @PatchMapping("/profile/{uid}")
-    public ResponseEntity < Void > editProfile(
-        @RequestBody EditProfileRequestDto entity,
-        @AuthenticationPrincipal UserDetails userDetails,
-        @PathVariable("uid") UUID uid) {
+    public ResponseEntity<Void> editProfile(
+            @RequestBody EditProfileRequestDto entity,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable("uid") UUID uid) {
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
 
         if (!currentUserId.equals(uid)) {
@@ -104,7 +106,9 @@ public class UserController {
 
         // entity에 대한 유효성 검사
         if (entity.getName() == null || entity.getName().isEmpty() ||
-            entity.getBirthDate() == null || entity.getGender() == null || entity.getGender().isBlank() || entity.getHeight() == null || entity.getWeight() == null || entity.getHeight() <= 0 || entity.getWeight() <= 0) {
+                entity.getBirthDate() == null || entity.getGender() == null || entity.getGender().isBlank()
+                || entity.getHeight() == null || entity.getWeight() == null || entity.getHeight() <= 0
+                || entity.getWeight() <= 0) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "수정 값은 null일 수 없습니다.");
         }
 
@@ -115,16 +119,17 @@ public class UserController {
 
     /**
      * 사용자 설정값 수정
-     * @param entity 수정할 정보
+     * 
+     * @param entity      수정할 정보
      * @param userDetails Authentication된 사용자의 정보가 저장
-     * @param uid 사용자 uid
+     * @param uid         사용자 uid
      * @return
      */
     @PatchMapping("/settings/{uid}")
-    public ResponseEntity < Void > editUserSetting(
-        @RequestBody EditSettingRequestDto entity,
-        @AuthenticationPrincipal UserDetails userDetails,
-        @PathVariable("uid") UUID uid) {
+    public ResponseEntity<Void> editUserSetting(
+            @RequestBody EditSettingRequestDto entity,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable("uid") UUID uid) {
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
 
         if (!currentUserId.equals(uid)) {
@@ -133,8 +138,8 @@ public class UserController {
 
         // entity에 대한 유효성 검사
         if (entity.getTitleId() == null ||
-            entity.getBackgroundColor() == null ||
-            entity.getLumiImage() == null) {
+                entity.getBackgroundColor() == null ||
+                entity.getLumiImage() == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "수정 값은 null일 수 없습니다.");
         }
 
@@ -149,19 +154,19 @@ public class UserController {
 
     /**
      * 사용자 루틴 달성 통계 반환
-     * @param uid 사용자 uid
-     * @param startDay 조회 시작일(YYYY-MM-DD)
-     * @param endDay 조회 종료일(YYYY-MM-DD)
+     * 
+     * @param uid         사용자 uid
+     * @param startDay    조회 시작일(YYYY-MM-DD)
+     * @param endDay      조회 종료일(YYYY-MM-DD)
      * @param userDetails Authentication된 사용자의 정보가 저장
      * @return
      */
     @GetMapping("/statistics/{uid}")
-    public ResponseEntity < StatisticsResponseDto > getUserRoutineStatistics(
-        @PathVariable("uid") UUID uid,
-        @RequestParam("startDay") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDay,
-        @RequestParam("endDay") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDay,
-        @AuthenticationPrincipal UserDetails userDetails
-    ) {
+    public ResponseEntity<StatisticsResponseDto> getUserRoutineStatistics(
+            @PathVariable("uid") UUID uid,
+            @RequestParam("startDay") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDay,
+            @RequestParam("endDay") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDay,
+            @AuthenticationPrincipal UserDetails userDetails) {
         // 본인의 데이터만 조회할 수 있도록 검증합니다.
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
         if (!currentUserId.equals(uid)) {
@@ -175,14 +180,15 @@ public class UserController {
 
     /**
      * 사용자의 첫 로그인 상태를 true로 변경
-     * @param uid 사용자 uid
+     * 
+     * @param uid         사용자 uid
      * @param userDetails Authentication된 사용자의 정보가 저장
      * @return
      */
     @PatchMapping("/isfirstlogin/{uid}")
     public ResponseEntity<Void> updateIsFirstLogin(
-        @PathVariable("uid") UUID uid,
-        @AuthenticationPrincipal UserDetails userDetails) {
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
         UUID currentUserId = UUID.fromString(userDetails.getUsername());
 
         if (!currentUserId.equals(uid)) {
@@ -192,5 +198,16 @@ public class UserController {
         userService.updateIsFirstLogin(uid);
 
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 모든 사용자의 랭킹 정보를 반환합니다.
+     * 
+     * @return 랭킹 정보 목록
+     */
+    @GetMapping("/ranking")
+    public ResponseEntity<UserRankingResponseDto> getRanking() {
+        UserRankingResponseDto responseDto = userService.getUserRankings();
+        return ResponseEntity.ok(responseDto);
     }
 }
