@@ -54,6 +54,7 @@ public class SecurityConfig {
                     "/routine",
                     "/routine/challenge",
                     "/routine/collections",
+                    "/routine/collections/**",
                     "/users/ranking").permitAll();
 
             if (swaggerEnabled) {
