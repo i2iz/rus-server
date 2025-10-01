@@ -3,6 +3,7 @@ package com.rus.rus.application;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -39,8 +40,13 @@ public class AttendanceService {
         WeeklyAttendance attendance = weeklyAttendanceRepository.findById(uid.toString())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자의 출석부 정보를 찾을 수 없습니다."));
 
+        // 현재 주의 시작일(월요일)과 종료일(일요일)을 계산합니다
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+
         // 2. 조회된 엔티티의 데이터를 DTO로 변환하여 반환합니다.
-        //    timestamp는 API 명세에 따라 현재 시간으로 설정합니다.
+        // timestamp는 API 명세에 따라 현재 시간으로 설정합니다.
         return AttendanceResponseDto.builder()
                 .timestamp(ZonedDateTime.now()) // LocalDateTime.now()를 ZonedDateTime.now()로 변경
                 .mon(attendance.getMon())
@@ -50,6 +56,8 @@ public class AttendanceService {
                 .fri(attendance.getFri())
                 .sat(attendance.getSat())
                 .sun(attendance.getSun())
+                .startDate(startDate)
+                .endDate(endDate)
                 .build();
     }
 
@@ -71,11 +79,10 @@ public class AttendanceService {
 
         // 3. 오늘의 요일에 해당하는 필드를 true로 설정합니다.
         boolean isAlreadyCheckedIn = isAlreadyCheckedIn(attendance, today);
-        
-        if(!isAlreadyCheckedIn) {
+
+        if (!isAlreadyCheckedIn) {
             updateAttendanceForToday(attendance, today);
         }
-
 
         // 4. 주간 개근 여부를 확인하고 보너스를 지급합니다.
         boolean isCompleted = false;
@@ -128,26 +135,26 @@ public class AttendanceService {
     private boolean isWeeklyAttendancePerfect(WeeklyAttendance attendance) {
         // Boolean 객체는 null일 수 있으므로, false와 명시적으로 비교합니다.
         return Boolean.TRUE.equals(attendance.getMon()) &&
-               Boolean.TRUE.equals(attendance.getTue()) &&
-               Boolean.TRUE.equals(attendance.getWed()) &&
-               Boolean.TRUE.equals(attendance.getThu()) &&
-               Boolean.TRUE.equals(attendance.getFri()) &&
-               Boolean.TRUE.equals(attendance.getSat()) &&
-               Boolean.TRUE.equals(attendance.getSun());
+                Boolean.TRUE.equals(attendance.getTue()) &&
+                Boolean.TRUE.equals(attendance.getWed()) &&
+                Boolean.TRUE.equals(attendance.getThu()) &&
+                Boolean.TRUE.equals(attendance.getFri()) &&
+                Boolean.TRUE.equals(attendance.getSat()) &&
+                Boolean.TRUE.equals(attendance.getSun());
     }
 
     /**
      * 특정 요일의 출석 여부를 반환하는 헬퍼 메소드
      */
     private boolean isAlreadyCheckedIn(WeeklyAttendance attendance, DayOfWeek day) {
-    return switch (day) {
-        case MONDAY -> Boolean.TRUE.equals(attendance.getMon());
-        case TUESDAY -> Boolean.TRUE.equals(attendance.getTue());
-        case WEDNESDAY -> Boolean.TRUE.equals(attendance.getWed());
-        case THURSDAY -> Boolean.TRUE.equals(attendance.getThu());
-        case FRIDAY -> Boolean.TRUE.equals(attendance.getFri());
-        case SATURDAY -> Boolean.TRUE.equals(attendance.getSat());
-        case SUNDAY -> Boolean.TRUE.equals(attendance.getSun());
-    };
-}
+        return switch (day) {
+            case MONDAY -> Boolean.TRUE.equals(attendance.getMon());
+            case TUESDAY -> Boolean.TRUE.equals(attendance.getTue());
+            case WEDNESDAY -> Boolean.TRUE.equals(attendance.getWed());
+            case THURSDAY -> Boolean.TRUE.equals(attendance.getThu());
+            case FRIDAY -> Boolean.TRUE.equals(attendance.getFri());
+            case SATURDAY -> Boolean.TRUE.equals(attendance.getSat());
+            case SUNDAY -> Boolean.TRUE.equals(attendance.getSun());
+        };
+    }
 }

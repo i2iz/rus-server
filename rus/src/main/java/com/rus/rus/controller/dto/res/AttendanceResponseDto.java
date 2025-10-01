@@ -3,6 +3,8 @@ package com.rus.rus.controller.dto.res;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.LocalDate;
 import java.time.ZonedDateTime; // LocalDateTime에서 ZonedDateTime으로 변경
 
 @Getter
@@ -20,4 +22,7 @@ public class AttendanceResponseDto {
     private Boolean fri;
     private Boolean sat;
     private Boolean sun;
+
+    private LocalDate startDate;
+    private LocalDate endDate;
 }
