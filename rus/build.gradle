@@ -37,6 +37,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
 	testImplementation 'io.projectreactor:reactor-test'
 	implementation 'com.auth0:jwks-rsa:0.22.1'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 }
 
 tasks.named('test') {
