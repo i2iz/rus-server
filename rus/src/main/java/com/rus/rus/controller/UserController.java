@@ -1,6 +1,7 @@
 package com.rus.rus.controller;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 
 import com.rus.rus.application.StatisticsService;
 import com.rus.rus.application.UserService;
@@ -26,9 +29,12 @@ import com.rus.rus.controller.dto.res.UserProfileResponseDto;
 import com.rus.rus.controller.dto.res.UserRankingResponseDto;
 import com.rus.rus.controller.dto.res.UserSettingResponseDto;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
 import lombok.RequiredArgsConstructor;
 
-@RestController
+@Controller
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
@@ -209,5 +215,30 @@ public class UserController {
     public ResponseEntity<UserRankingResponseDto> getRanking() {
         UserRankingResponseDto responseDto = userService.getUserRankings();
         return ResponseEntity.ok(responseDto);
+    }
+
+    /**
+     * 일일 리포트 HTML 페이지를 렌더링하여 반환합니다.
+     *
+     * @param uid         사용자 uid
+     * @param userDetails Authentication된 사용자의 정보
+     * @param model       View에 데이터를 전달할 Model 객체
+     * @return 렌더링할 Thymeleaf 템플릿의 이름
+     */
+    @GetMapping("/report/daily/{uid}")
+    public String getDailyReport(
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails,
+            Model model) {
+        // 본인의 데이터만 조회할 수 있도록 보안 검증
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        if (!currentUserId.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인의 리포트만 조회할 수 있습니다.");
+        }
+
+        Map<String, Object> reportData = userService.getDailyReportData(uid);
+        model.addAllAttributes(reportData);
+
+        return "daily-report";
     }
 }

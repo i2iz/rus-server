@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>일일 리포트</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+          sans-serif;
+        background-color: transparent;
+      }
+      .content-wrapper {
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: left;
+        font-size: 1.6em;
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #333;
+      }
+      h2 {
+        font-size: 1em;
+        font-weight: 600;
+        color: #555;
+        margin-top: 0;
+        margin-bottom: 12px;
+      }
+      .progress-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+      .progress-text {
+        font-size: 0.9em;
+        color: #888;
+        white-space: nowrap;
+      }
+      .progress-bar-wrapper {
+        flex-grow: 1;
+        height: 8px;
+        background-color: #efefef;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: #5cb85c;
+        border-radius: 4px;
+        transition: width 0.5s ease-in-out;
+      }
+      .routine-list-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .routine-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 16px;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+      .routine-category {
+        font-size: 0.8em;
+        font-weight: 600;
+        color: #a0a0a0;
+        margin-bottom: 6px;
+      }
+      .routine-content {
+        font-size: 0.95em;
+        font-weight: 500;
+        color: #333;
+        line-height: 1.4;
+        word-break: keep-all;
+      }
+      .status-icon {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 22px;
+        height: 22px;
+      }
+      .chart-section {
+        margin-top: 40px;
+      }
+      .chart-container {
+        padding: 16px;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        height: 300px;
+      }
+
+      .feedback-section {
+        margin-top: 40px;
+      }
+      .feedback-content {
+        font-size: 0.9em;
+        color: #666;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content-wrapper">
+      <h1 th:text="${greeting}">🌤️ 좋은 아침이에요, 사용자님!</h1>
+      <h2>오늘의 루틴 달성 현황이에요</h2>
+      <div class="progress-container">
+        <span class="progress-text">달성률:</span>
+        <div class="progress-bar-wrapper">
+          <div
+            class="progress-bar"
+            th:style="'width: ' + ${completionRate} + '%;'"
+          ></div>
+        </div>
+        <span class="progress-text" th:text="${completionRate} + '%'">50%</span>
+      </div>
+
+      <div class="routine-list-grid" th:if="${!routineStatusList.isEmpty()}">
+        <div class="routine-card" th:each="routine : ${routineStatusList}">
+          <div>
+            <div class="routine-category" th:text="${routine.category}">
+              카테고리
+            </div>
+            <div class="routine-content" th:text="${routine.content}">
+              루틴 내용
+            </div>
+          </div>
+          <img
+            th:if="${routine.isCompleted}"
+            src="https://icongr.am/clarity/check-circle.svg?size=24&color=5cb85c"
+            class="status-icon"
+            alt="완료"
+          />
+          <img
+            th:unless="${routine.isCompleted}"
+            src="https://icongr.am/clarity/times-circle.svg?size=24&color=cccccc"
+            class="status-icon"
+            alt="미완료"
+          />
+        </div>
+      </div>
+
+      <div class="chart-section" th:if="${!chartDatasets.isEmpty()}">
+        <h2>최근 7일간의 루틴 달성 기록이에요</h2>
+        <div class="chart-container">
+          <canvas id="achievementChart"></canvas>
+        </div>
+      </div>
+
+      <div class="feedback-section">
+        <h2>📝 Sera의 피드백</h2>
+        <p class="feedback-content" th:text="${aiFeedback}">
+          AI의 분석 피드백이 여기에 표시됩니다.
+        </p>
+      </div>
+    </div>
+
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const chartDateLabels = /*[[${chartDateLabels}]]*/ [];
+      const chartDatasets = /*[[${chartDatasets}]]*/ [];
+      /*]]>*/
+
+      if (chartDatasets.length > 0) {
+        const ctx = document.getElementById("achievementChart");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: chartDateLabels,
+            datasets: chartDatasets,
+          },
+          options: {
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                grid: {
+                  display: false,
+                },
+                ticks: {
+                  font: {
+                    size: 10,
+                  },
+                },
+              },
+              y: {
+                reverse: false,
+                suggestedMin: 0,
+                suggestedMax: 24,
+                grid: {
+                  color: "#f0f0f0",
+                },
+                ticks: {
+                  stepSize: 2,
+                  callback: function (value, index, values) {
+                    return value + "시";
+                  },
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                position: "bottom",
+                align: "start",
+                labels: {
+                  boxWidth: 20,
+                  boxHeight: 2,
+                  padding: 20,
+                  usePointStyle: false,
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label || "";
+                    if (label) {
+                      label += ": ";
+                    }
+                    if (context.parsed.y !== null) {
+                      const hour = Math.floor(context.parsed.y);
+                      const minute = Math.round((context.parsed.y - hour) * 60);
+                      label += hour + "시 " + minute + "분";
+                    }
+                    return label;
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
