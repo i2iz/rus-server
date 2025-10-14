@@ -395,19 +395,32 @@ public class RoutineService {
         }
 
         // ==================== 4-9. Sera 추천 루틴 정보 반환 ====================
+        /**
+         * 요청 날짜 기준, 특정 사용자의 Sera 추천 루틴과 오늘의 달성 여부를 반환합니다.
+         * 
+         * @param uid 사용자 ID
+         * @return 추천 루틴 목록과 달성 여부가 포함된 DTO
+         */
         @Transactional(readOnly = true)
         public RecommendRoutineResponseDto getRecommendRoutines(String uid) {
+                // 1. routines_sera 테이블에서 해당 사용자의 추천 루틴을 모두 조회합니다.
                 List<RoutineSera> seraRoutines = routineSeraRepository.findByUserProfile_Uid(uid);
+
+                // 2. routines_sera_attainment 테이블에서 '오늘' 달성한 기록만 조회하기 위해 시간 범위를 설정합니다.
                 LocalDate today = LocalDate.now();
+                LocalDateTime startOfDay = today.atStartOfDay();
+                LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
 
+                // 3. 오늘 달성한 Sera 추천 루틴 기록을 조회합니다.
                 List<RoutineSeraAttainment> todayAttainments = routineSeraAttainmentRepository
-                                .findByUserProfile_UidAndTimestampBetween(uid, today.atStartOfDay(),
-                                                today.plusDays(1).atStartOfDay());
+                                .findByUserProfile_UidAndTimestampBetween(uid, startOfDay, endOfDay);
 
+                // 4. 조회 성능을 위해 오늘 달성한 루틴의 ID만 Set으로 추출합니다.
                 Set<Integer> completedRoutineIds = todayAttainments.stream()
-                                .map(rsa -> rsa.getRoutineSera().getId())
+                                .map(attainment -> attainment.getRoutineSera().getId())
                                 .collect(Collectors.toSet());
 
+                // 5. 각 추천 루틴에 대해 오늘 달성했는지 여부를 확인하고 DTO로 변환합니다.
                 List<RecommendRoutineItemDto> routineItems = seraRoutines.stream()
                                 .map(seraRoutine -> {
                                         CategoryDto categoryDto = null;
@@ -418,17 +431,19 @@ public class RoutineService {
                                                                 .build();
                                         }
 
+                                        // Set에 해당 루틴의 ID가 포함되어 있는지 확인하여 달성 여부(complete)를 결정합니다.
                                         boolean isComplete = completedRoutineIds.contains(seraRoutine.getId());
 
                                         return RecommendRoutineItemDto.builder()
                                                         .id(seraRoutine.getId())
                                                         .category(categoryDto)
                                                         .content(seraRoutine.getContent())
-                                                        .complete(isComplete)
+                                                        .complete(isComplete) // API 명세에 따라 달성 여부 플래그를 추가
                                                         .build();
                                 })
                                 .collect(Collectors.toList());
 
+                // 6. API 명세 형식에 맞춰 최종 응답 DTO를 생성하여 반환합니다.
                 return RecommendRoutineResponseDto.builder()
                                 .routines(routineItems)
                                 .build();
