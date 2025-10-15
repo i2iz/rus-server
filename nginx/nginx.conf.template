@@ -4,20 +4,10 @@ upstream spring_boot_app {
     keepalive 32; # 연결 재사용
 }
 
-# 요청 제한 존
-limit_conn_zone $binary_remote_addr zone=perip:10m;
-limit_req_zone  $binary_remote_addr zone=mylimit:10m rate=1r/s;
-
 server {
     listen 80;
     server_name ${SERVER_NAME};
 
-    # 응답 코드를 429로 지정
-    limit_req_status 429;
-    limit_conn_status 429;
-
-    # 기본 제한/보안
-    limit_conn perip 20;
     client_max_body_size 10m;
     client_header_timeout 10s;
     client_body_timeout 10s;
@@ -30,8 +20,6 @@ server {
     add_header Referrer-Policy strict-origin-when-cross-origin;
 
     location / {
-        limit_req zone=mylimit burst=5;
-
         proxy_pass http://spring_boot_app;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
