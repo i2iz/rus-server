@@ -27,6 +27,7 @@ public class RoutineService {
         private static final List<String> ALL_CATEGORIES = Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
         private static final int TOTAL_RECOMMEND_COUNT = 10;
         private static final int SERA_ROUTINE_LUX_BONUS = 10;
+        private static final int GENERAL_ROUTINE_LUX_BOUNS = 5;
 
         private final RoutineRepository routineRepository;
         private final RoutineCollectionRepository routineCollectionRepository;
@@ -354,44 +355,34 @@ public class RoutineService {
                 userRoutineRepository.delete(userRoutine);
         }
 
-        /*
-         * // ==================== 4-7. 사용자 루틴 달성 체크 ====================
-         * 
-         * @Transactional
-         * public void checkRoutineAttainment(String uid, Integer routineId) {
-         * UserRoutine userRoutine = userRoutineRepository.findById(routineId)
-         * .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
-         * 
-         * if (!userRoutine.getUserProfile().getUid().equals(uid)) {
-         * throw new IllegalArgumentException("본인의 루틴만 체크할 수 있습니다.");
-         * }
-         * 
-         * LocalDate today = LocalDate.now();
-         * boolean alreadyChecked = userAttainmentRepository.
-         * existsByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
-         * uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-         * 
-         * if (alreadyChecked) {
-         * throw new IllegalArgumentException("이미 체크된 루틴입니다.");
-         * }
-         * 
-         * UserProfile userProfile = userProfileRepository.findById(uid)
-         * .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-         * 
-         * UserAttainment attainment = UserAttainment.builder()
-         * .userProfile(userProfile)
-         * .userRoutine(userRoutine)
-         * .timestamp(LocalDateTime.now())
-         * .build();
-         * userAttainmentRepository.save(attainment);
-         * }
-         */
         // ==================== 4-8. 사용자 루틴 체크 해제 ====================
         @Transactional
         public void uncheckRoutineAttainment(String uid, Integer routineId) {
                 LocalDate today = LocalDate.now();
+                LocalDateTime startOfDay = today.atStartOfDay();
+                LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+
                 userAttainmentRepository.deleteByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
                                 uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+                // 1. 오늘 달성한 기록이 있는지 확인합니다.
+                List<UserAttainment> attainments = userAttainmentRepository
+                                .findByUserProfile_UidAndTimestampBetween(uid, startOfDay, endOfDay);
+                Optional<UserAttainment> attainmentToCancel = attainments.stream()
+                                .filter(a -> a.getUserRoutine().getId().equals(routineId))
+                                .findFirst();
+
+                // 2. 달성 기록이 있다면 lux를 차감하고 기록을 삭제합니다.
+                if (attainmentToCancel.isPresent()) {
+                        UserProfile userProfile = userProfileRepository.findById(uid)
+                                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+                        int newLux = userProfile.getLux() - GENERAL_ROUTINE_LUX_BOUNS;
+                        userProfile.setLux(Math.max(0, newLux)); // lux가 0 미만으로 내려가지 않도록 보장
+                        userProfileRepository.save(userProfile);
+
+                        userAttainmentRepository.delete(attainmentToCancel.get());
+                }
         }
 
         // ==================== 4-9. Sera 추천 루틴 정보 반환 ====================
@@ -766,6 +757,10 @@ public class RoutineService {
                                 .timestamp(LocalDateTime.now())
                                 .build();
                 userAttainmentRepository.save(attainment);
+
+                // 사용자의 lux값을 소량 증가
+                userProfile.setLux(userProfile.getLux() + GENERAL_ROUTINE_LUX_BOUNS);
+                userProfileRepository.save(userProfile);
 
                 // ⭐ 모든 루틴 완료 확인 및 스트릭 업데이트
                 updateStreakOnCompletion(uid);
