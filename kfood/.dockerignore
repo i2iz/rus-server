@@ -1,0 +1,22 @@
+# .dockerignore
+
+# Python 및 IDE 관련
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+.env
+.idea
+.vscode
+.git
+
+# Conda 관련
+conda-env/
+.conda/
+yolo-api/  # Conda 가상환경 폴더 (사용자가 만든 이름)
+
+# 운영체제/백업
+*.log
+*.tmp
+*~
