@@ -1,0 +1,38 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.so
+
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+*.egg-info/
+.installed.cfg
+*.manifest
+*.spec
+
+.ipynb_checkpoints
+.ipython/
+.jupyter/
+.vscode/
+
+.venv
+venv
+env
+
+yolo-api/
+
+# Conda 환경 덤프 파일 (명령어로 생성될 수 있음)
+environment.yml
+*.lock
+
+# 임시 데이터 및 캐시
+.dvc
+.trash
+
+.DS_Store # macOS
+Thumbs.db # Windows
+*~
