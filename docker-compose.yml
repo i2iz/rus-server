@@ -1,33 +1,39 @@
 services:
-    nginx:
-        build: ./nginx
-        container_name: nginx
-        ports:
-            - "80:80"
-            # - "443:443"
-        environment:
-            - SERVER_NAME=${SERVER_NAME}
-        depends_on:
-            - spring-boot-app
-        restart: always
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      # - "443:443"
+    environment:
+      - SERVER_NAME=${SERVER_NAME}
+    depends_on:
+      - spring-boot-app
+    restart: always
 
-    spring-boot-app:
-        build:
-            context: ./rus
-            dockerfile: Dockerfile
-        container_name: spring_boot_app
-        env_file:
-            - .env
-        environment:
-            - SPRING_PROFILES_ACTIVE=prod
-        restart: always
-        healthcheck:
-            test:
-                [
-                    "CMD-SHELL",
-                    "curl -f http://localhost:8080/actuator/health || exit 1",
-                ]
-            interval: 1m30s
-            timeout: 30s
-            retries: 3
-            start_period: 45s
+  spring-boot-app:
+    build:
+      context: ./rus
+      dockerfile: Dockerfile
+    container_name: spring_boot_app
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    restart: always
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 3
+      start_period: 45s
+  kfood-detection:
+    build:
+      context: ./kfood
+      dockerfile: Dockerfile
+    container_name: kfood_detection_app
+    # FastAPI 서버가 실행되는 8001 포트를 외부에 노출합니다.
+    ports:
+      - "8001:8001"
+    restart: always
