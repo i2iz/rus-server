@@ -55,7 +55,8 @@ public class SecurityConfig {
                     "/routine/challenge",
                     "/routine/collections",
                     "/routine/collections/**",
-                    "/users/ranking").permitAll();
+                    "/users/ranking",
+                    "/kfood/detect").permitAll();
 
             if (swaggerEnabled) {
                 // Swagger UI 및 API docs에 인증 없이 접근 허용
