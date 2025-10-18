@@ -356,4 +356,18 @@ public class UserService {
                                 .collect(Collectors.joining("\n"));
         }
 
+        /**
+         * 임시: 사용자에게 임시 Lux를 추가합니다.
+         * * @param uid Lux를 추가할 사용자 고유 식별자
+         */
+        @Transactional
+        public void addTestLux(UUID uid) {
+                UserProfile userProfile = userProfileRepository.findById(uid.toString())
+                                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+                // 기존 Lux에 250을 추가합니다.
+                userProfile.setLux(userProfile.getLux() + 250);
+                userProfileRepository.save(userProfile);
+        }
+
 }

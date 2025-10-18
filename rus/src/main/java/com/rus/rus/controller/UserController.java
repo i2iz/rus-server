@@ -241,4 +241,26 @@ public class UserController {
 
         return "daily-report";
     }
+
+    /**
+     * [개발/테스트용] 사용자에게 임시 Lux를 추가합니다.
+     * * @param uid 사용자 uid
+     * 
+     * @param userDetails Authentication된 사용자의 정보가 저장
+     * @return
+     */
+    @PatchMapping("/test/addlux/{uid}")
+    public ResponseEntity<Void> addTestLux(
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+
+        if (!currentUserId.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인 외 사용자의 정보는 수정할 수 없습니다.");
+        }
+
+        userService.addTestLux(uid);
+
+        return ResponseEntity.noContent().build();
+    }
 }
