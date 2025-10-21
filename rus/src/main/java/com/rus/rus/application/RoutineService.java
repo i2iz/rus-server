@@ -20,6 +20,10 @@ import com.rus.rus.infra.repository.*;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 루틴 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
+ * 사용자의 루틴 추천, 추가, 수정, 삭제, 달성 처리 등 다양한 기능을 담당합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class RoutineService {
@@ -27,6 +31,7 @@ public class RoutineService {
         private static final List<String> ALL_CATEGORIES = Arrays.asList("수면", "운동", "영양소", "햇빛", "사회적유대감");
         private static final int TOTAL_RECOMMEND_COUNT = 10;
         private static final int SERA_ROUTINE_LUX_BONUS = 10;
+        private static final int GENERAL_ROUTINE_LUX_BOUNS = 5;
 
         private final RoutineRepository routineRepository;
         private final RoutineCollectionRepository routineCollectionRepository;
@@ -42,8 +47,12 @@ public class RoutineService {
         private final RecoveryMissionItemRepository recoveryMissionItemRepository;
 
         /**
+         * (API-3.1) 추천 루틴 생성
          * 요청된 카테고리에 가중치를 부여하여 총 10개의 루틴을 추천합니다.
-         * 5개 모든 카테고리가 최소 1개 이상 포함됩니다.
+         * 5개 모든 카테고리가 최소 1개 이상 포함되도록 보장합니다.
+         *
+         * @param requestedCategoryNames 추천 가중치를 부여할 카테고리 이름 목록
+         * @return 추천 루틴 목록이 포함된 {@link RecommendResponseDto} 객체
          */
         @Transactional(readOnly = true)
         public RecommendResponseDto getRecommendedRoutines(List<String> requestedCategoryNames) {
@@ -134,6 +143,12 @@ public class RoutineService {
                                 .build();
         }
 
+        /**
+         * (API-3.2) 모든 루틴 정보 반환
+         * 시스템에 등록된 모든 기본 루틴 목록을 조회합니다.
+         *
+         * @return 모든 루틴 정보가 포함된 {@link AllRoutinesResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public AllRoutinesResponseDto getAllRoutines() {
                 List<Routine> allRoutines = routineRepository.findAll();
@@ -154,6 +169,13 @@ public class RoutineService {
                                 .build();
         }
 
+        /**
+         * (API-3.3) Sera의 추천 루틴 모음 반환
+         * 시스템에 등록된 모든 루틴 컬렉션(패키지) 목록을 조회합니다.
+         * 각 컬렉션에 포함된 루틴 정보도 함께 반환합니다.
+         *
+         * @return 모든 루틴 컬렉션 정보가 포함된 {@link AllCollectionsResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public AllCollectionsResponseDto getAllRoutineCollections() {
                 List<RoutineCollection> allCollections = routineCollectionRepository.findAll();
@@ -197,7 +219,14 @@ public class RoutineService {
                                 .build();
         }
 
-        // ==================== 4-1. 루틴 추가 ====================
+        /**
+         * (API-4.1) 루틴 추가
+         * 특정 사용자에게 기본 루틴을 여러 개 추가합니다.
+         *
+         * @param uid     루틴을 추가할 사용자의 고유 식별자(UID)
+         * @param request 추가할 루틴들의 ID 목록이 담긴 {@link RoutineAddRequestDto} 객체
+         * @throws IllegalArgumentException 존재하지 않는 루틴 ID가 포함된 경우 발생
+         */
         @Transactional
         public void addRoutinesToUser(String uid, RoutineAddRequestDto request) {
                 List<Routine> routines = routineRepository.findByRidIn(request.getRid());
@@ -220,7 +249,15 @@ public class RoutineService {
                 }
         }
 
-        // ==================== 4-2. 루틴 추가 - 직접 작성 ====================
+        /**
+         * (API-4.2) 루틴 추가 - 직접 작성
+         * 사용자가 직접 작성한 커스텀 루틴을 추가합니다.
+         *
+         * @param uid     루틴을 추가할 사용자의 고유 식별자(UID)
+         * @param request 추가할 커스텀 루틴의 내용과 카테고리 ID가 담긴 {@link RoutineAddCustomRequestDto}
+         *                객체
+         * @throws IllegalArgumentException 카테고리 ID나 내용이 비어있는 경우 발생
+         */
         @Transactional
         public void addCustomRoutineToUser(String uid, RoutineAddCustomRequestDto request) {
                 if (request.getCategoryId() == null || request.getContent() == null
@@ -243,7 +280,13 @@ public class RoutineService {
                 userRoutineRepository.save(userRoutine);
         }
 
-        // ==================== 4-3. 사용자 루틴 정보 반환 ====================
+        /**
+         * (API-4.3) 요청 날짜 기준 사용자의 루틴 정보 반환
+         * 특정 사용자의 모든 개인 루틴 목록과 오늘의 달성 여부를 조회합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 사용자의 개인 루틴 목록이 포함된 {@link PersonalRoutineResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public PersonalRoutineResponseDto getPersonalRoutines(String uid) {
                 List<UserRoutine> userRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
@@ -286,7 +329,15 @@ public class RoutineService {
                                 .build();
         }
 
-        // ==================== 4-4. 특정 루틴 정보 반환 ====================
+        /**
+         * (API-4.4) 특정 루틴 정보 반환
+         * 특정 개인 루틴 하나의 상세 정보를 조회합니다.
+         *
+         * @param id       조회할 루틴의 고유 ID
+         * @param tokenUid 요청을 보낸 사용자의 JWT 토큰에서 추출한 UID (본인 확인용)
+         * @return 특정 루틴의 상세 정보가 포함된 {@link SingleRoutineResponseDto} 객체
+         * @throws IllegalArgumentException 루틴이 존재하지 않거나 본인의 루틴이 아닐 경우 발생
+         */
         @Transactional(readOnly = true)
         public SingleRoutineResponseDto getRoutineById(Integer id, String tokenUid) {
                 UserRoutine userRoutine = userRoutineRepository.findById(id)
@@ -323,7 +374,15 @@ public class RoutineService {
                                 .build();
         }
 
-        // ==================== 4-5. 사용자 루틴 수정 ====================
+        /**
+         * (API-4.5) 사용자 루틴 - 루틴 수정
+         * 특정 개인 루틴의 내용 또는 카테고리를 수정합니다.
+         *
+         * @param id       수정할 루틴의 고유 ID
+         * @param request  수정할 내용과 카테고리 ID가 담긴 {@link RoutineUpdateRequestDto} 객체
+         * @param tokenUid 요청을 보낸 사용자의 JWT 토큰에서 추출한 UID (본인 확인용)
+         * @throws IllegalArgumentException 루틴이 존재하지 않거나 본인의 루틴이 아닐 경우 발생
+         */
         @Transactional
         public void updateRoutine(Integer id, RoutineUpdateRequestDto request, String tokenUid) {
                 UserRoutine userRoutine = userRoutineRepository.findById(id)
@@ -341,7 +400,14 @@ public class RoutineService {
                 userRoutineRepository.save(userRoutine);
         }
 
-        // ==================== 4-6. 사용자 루틴 삭제 ====================
+        /**
+         * (API-4.6) 사용자 루틴 - 루틴 삭제
+         * 특정 개인 루틴을 삭제합니다.
+         *
+         * @param id       삭제할 루틴의 고유 ID
+         * @param tokenUid 요청을 보낸 사용자의 JWT 토큰에서 추출한 UID (본인 확인용)
+         * @throws IllegalArgumentException 루틴이 존재하지 않거나 본인의 루틴이 아닐 경우 발생
+         */
         @Transactional
         public void deleteRoutine(Integer id, String tokenUid) {
                 UserRoutine userRoutine = userRoutineRepository.findById(id)
@@ -354,52 +420,45 @@ public class RoutineService {
                 userRoutineRepository.delete(userRoutine);
         }
 
-        /*
-         * // ==================== 4-7. 사용자 루틴 달성 체크 ====================
-         * 
-         * @Transactional
-         * public void checkRoutineAttainment(String uid, Integer routineId) {
-         * UserRoutine userRoutine = userRoutineRepository.findById(routineId)
-         * .orElseThrow(() -> new IllegalArgumentException("루틴을 찾을 수 없습니다."));
-         * 
-         * if (!userRoutine.getUserProfile().getUid().equals(uid)) {
-         * throw new IllegalArgumentException("본인의 루틴만 체크할 수 있습니다.");
-         * }
-         * 
-         * LocalDate today = LocalDate.now();
-         * boolean alreadyChecked = userAttainmentRepository.
-         * existsByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
-         * uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
-         * 
-         * if (alreadyChecked) {
-         * throw new IllegalArgumentException("이미 체크된 루틴입니다.");
-         * }
-         * 
-         * UserProfile userProfile = userProfileRepository.findById(uid)
-         * .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-         * 
-         * UserAttainment attainment = UserAttainment.builder()
-         * .userProfile(userProfile)
-         * .userRoutine(userRoutine)
-         * .timestamp(LocalDateTime.now())
-         * .build();
-         * userAttainmentRepository.save(attainment);
-         * }
+        /**
+         * (API-4.8) 사용자 루틴 - 체크 해제
+         * 사용자의 일반 루틴 달성 체크를 해제하고, 지급되었던 lux를 회수합니다.
+         *
+         * @param uid       체크를 해제할 사용자의 고유 식별자(UID)
+         * @param routineId 체크를 해제할 루틴의 고유 ID
          */
-        // ==================== 4-8. 사용자 루틴 체크 해제 ====================
         @Transactional
         public void uncheckRoutineAttainment(String uid, Integer routineId) {
                 LocalDate today = LocalDate.now();
-                userAttainmentRepository.deleteByUserProfile_UidAndUserRoutine_IdAndTimestampBetween(
-                                uid, routineId, today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+                LocalDateTime startOfDay = today.atStartOfDay();
+                LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+
+                // 1. 오늘 달성한 기록이 있는지 확인합니다.
+                List<UserAttainment> attainments = userAttainmentRepository
+                                .findByUserProfile_UidAndTimestampBetween(uid, startOfDay, endOfDay);
+                Optional<UserAttainment> attainmentToCancel = attainments.stream()
+                                .filter(a -> a.getUserRoutine().getId().equals(routineId))
+                                .findFirst();
+
+                // 2. 달성 기록이 있다면 lux를 차감하고 기록을 삭제합니다.
+                if (attainmentToCancel.isPresent()) {
+                        UserProfile userProfile = userProfileRepository.findById(uid)
+                                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+                        int newLux = userProfile.getLux() - GENERAL_ROUTINE_LUX_BOUNS;
+                        userProfile.setLux(Math.max(0, newLux)); // lux가 0 미만으로 내려가지 않도록 보장
+                        userProfileRepository.save(userProfile);
+
+                        userAttainmentRepository.delete(attainmentToCancel.get());
+                }
         }
 
-        // ==================== 4-9. Sera 추천 루틴 정보 반환 ====================
         /**
-         * 요청 날짜 기준, 특정 사용자의 Sera 추천 루틴과 오늘의 달성 여부를 반환합니다.
-         * 
-         * @param uid 사용자 ID
-         * @return 추천 루틴 목록과 달성 여부가 포함된 DTO
+         * (API-4.9) 요청 날짜 기준 사용자의 추천 루틴 정보 반환
+         * 특정 사용자의 Sera 추천 루틴 목록과 오늘의 달성 여부를 조회합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return Sera 추천 루틴 목록이 포함된 {@link RecommendRoutineResponseDto} 객체
          */
         @Transactional(readOnly = true)
         public RecommendRoutineResponseDto getRecommendRoutines(String uid) {
@@ -449,7 +508,14 @@ public class RoutineService {
                                 .build();
         }
 
-        // ==================== 4-10. Sera 추천 루틴 달성 체크 ====================
+        /**
+         * (API-4.10) Sera의 추천 루틴 - 달성 체크
+         * Sera 추천 루틴을 달성 처리하고, 사용자에게 보상 lux를 지급합니다.
+         *
+         * @param uid       루틴을 달성한 사용자의 고유 식별자(UID)
+         * @param routineId 달성한 Sera 추천 루틴의 고유 ID
+         * @throws IllegalArgumentException 루틴이 존재하지 않거나, 본인의 루틴이 아니거나, 이미 달성한 경우 발생
+         */
         @Transactional
         public void checkSeraRoutineAttainment(String uid, Integer routineId) {
                 RoutineSera seraRoutine = routineSeraRepository.findById(routineId)
@@ -482,7 +548,13 @@ public class RoutineService {
                 userProfileRepository.save(userProfile);
         }
 
-        // ==================== 4-11. 챌린지 미션 - 발생 여부 조회 ====================
+        /**
+         * (API-4.11) 챌린지 미션 - 발생 여부 조회
+         * 오늘의 챌린지 미션 발생 여부와 상태를 조회합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 챌린지 상태 정보가 포함된 {@link ChallengeStatusResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public ChallengeStatusResponseDto getChallengeStatus(String uid) {
                 Optional<ChallengeUser> challengeUserOpt = challengeUserRepository.findById(uid);
@@ -538,7 +610,14 @@ public class RoutineService {
                                 .build();
         }
 
-        // ==================== 4-12. 챌린지 미션 - 도전 수락 ====================
+        /**
+         * (API-4.12) 챌린지 미션 - 도전 수락
+         * 챌린지 미션 도전을 수락 처리합니다.
+         * '도전' 버튼을 누른 상태로, 아직 달성은 하지 않은 상태(`check` = false)로 변경합니다.
+         *
+         * @param uid 챌린지를 수락한 사용자의 고유 식별자(UID)
+         * @throws IllegalArgumentException 해당 사용자가 챌린지 대상이 아닐 경우 발생
+         */
         @Transactional
         public void acceptChallenge(String uid) {
                 ChallengeUser challengeUser = challengeUserRepository.findById(uid)
@@ -548,7 +627,14 @@ public class RoutineService {
                 challengeUserRepository.save(challengeUser);
         }
 
-        // ==================== 4-13. 챌린지 미션 - 다음에 ====================
+        /**
+         * (API-4.13) 챌린지 미션 - 다음에
+         * 오늘의 챌린지 미션을 보류(다음에 하기) 처리합니다.
+         * 대상자 목록에서 해당 사용자를 삭제합니다.
+         *
+         * @param uid 챌린지를 보류한 사용자의 고유 식별자(UID)
+         * @throws IllegalArgumentException 해당 사용자가 챌린지 대상이 아닐 경우 발생
+         */
         @Transactional
         public void postponeChallenge(String uid) {
                 ChallengeUser challengeUser = challengeUserRepository.findById(uid)
@@ -557,7 +643,14 @@ public class RoutineService {
                 challengeUserRepository.delete(challengeUser);
         }
 
-        // ==================== 4-14. 챌린지 미션 - 달성 체크 ====================
+        /**
+         * (API-4.14) 챌린지 미션 - 달성 체크
+         * 챌린지 미션을 달성 완료 처리합니다.
+         * `check` 상태를 `true`로 변경합니다.
+         *
+         * @param uid 챌린지를 달성한 사용자의 고유 식별자(UID)
+         * @throws IllegalArgumentException 챌린지 대상이 아니거나, 도전을 수락하지 않았거나, 이미 완료한 경우 발생
+         */
         @Transactional
         public void completeChallengeAttainment(String uid) {
                 ChallengeUser challengeUser = challengeUserRepository.findById(uid)
@@ -575,6 +668,13 @@ public class RoutineService {
                 challengeUserRepository.save(challengeUser);
         }
 
+        /**
+         * (API-4.15) 리커버리 미션 - 상태 조회
+         * 사용자의 리커버리 미션 상태(유효 여부, 남은 시간, 미션 목록 등)를 조회합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 리커버리 미션 상태 정보가 담긴 {@link RecoveryStatusResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public RecoveryStatusResponseDto getRecoveryStatus(String uid) {
                 Optional<RecoveryMission> recoveryOpt = recoveryMissionRepository.findByUid(uid);
@@ -632,7 +732,17 @@ public class RoutineService {
                                 .build();
         }
 
-        // 4-15-2. 리커버리 미션 달성 체크
+        /**
+         * (API-4.15) 리커버리 미션 - 달성 체크
+         * 리커버리 미션을 달성 처리합니다.
+         * 모든 미션을 완료하면 연속 달성 일수를 복구하고 리커버리 미션 데이터를 삭제합니다.
+         *
+         * @param uid 미션을 달성한 사용자의 고유 식별자(UID)
+         * @param rid 달성한 리커버리 미션(루틴)의 고유 ID
+         * @return 미션 완료 결과(전체 완료 여부, 스트릭 복구 여부 등)가 담긴
+         *         {@link RecoveryAttainmentResponseDto} 객체
+         * @throws ApiException 리커버리 미션 기간이 만료되었거나 이미 완료된 미션일 경우 발생
+         */
         @Transactional
         public RecoveryAttainmentResponseDto checkRecoveryAttainment(String uid, Integer rid) {
                 RecoveryMission recovery = recoveryMissionRepository.findByUid(uid)
@@ -688,7 +798,13 @@ public class RoutineService {
                                 .build();
         }
 
-        // 4-15-3. 연속 달성 일수 조회
+        /**
+         * (API-4.15) 리커버리 미션 - 연속 달성 일수 조회
+         * 사용자의 현재 연속 달성 일수(Streak), 리커버리 상태, 오늘의 루틴 진행률을 조회합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 연속 달성 관련 정보가 담긴 {@link StreakResponseDto} 객체
+         */
         @Transactional(readOnly = true)
         public StreakResponseDto getStreak(String uid) {
                 UserProfile userProfile = userProfileRepository.findById(uid)
@@ -738,7 +854,15 @@ public class RoutineService {
                                 .build();
         }
 
-        // 4-7 수정: 연속 달성 일수 업데이트 로직 추가
+        /**
+         * (API-4.7) 사용자 루틴 - 달성 체크
+         * 사용자의 일반 루틴을 달성 처리하고, 보상 lux를 지급합니다.
+         * 모든 루틴을 달성했을 경우, 연속 달성 일수(Streak)를 업데이트합니다.
+         *
+         * @param uid       루틴을 달성한 사용자의 고유 식별자(UID)
+         * @param routineId 달성한 루틴의 고유 ID
+         * @throws IllegalArgumentException 루틴이 존재하지 않거나, 본인의 루틴이 아니거나, 이미 달성한 경우 발생
+         */
         @Transactional
         public void checkRoutineAttainment(String uid, Integer routineId) {
                 UserRoutine userRoutine = userRoutineRepository.findById(routineId)
@@ -767,11 +891,19 @@ public class RoutineService {
                                 .build();
                 userAttainmentRepository.save(attainment);
 
+                // 사용자의 lux값을 소량 증가
+                userProfile.setLux(userProfile.getLux() + GENERAL_ROUTINE_LUX_BOUNS);
+                userProfileRepository.save(userProfile);
+
                 // ⭐ 모든 루틴 완료 확인 및 스트릭 업데이트
                 updateStreakOnCompletion(uid);
         }
 
-        // 연속 달성 일수 업데이트 로직
+        /**
+         * 사용자가 오늘의 모든 루틴을 완료했는지 확인하고, 조건에 따라 연속 달성 일수(Streak)를 업데이트하는 내부 메소드입니다.
+         *
+         * @param uid 검사할 사용자의 고유 식별자(UID)
+         */
         private void updateStreakOnCompletion(String uid) {
                 List<UserRoutine> allRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
                 LocalDate today = LocalDate.now();
@@ -805,10 +937,12 @@ public class RoutineService {
         }
 
         /**
-         * 특정 루틴 컬렉션 ID에 해당하는 상세 정보와 루틴 목록을 반환합니다.
+         * (API-3.5) Sera의 추천 루틴 모음 -> 특정 루틴 모음 반환
+         * 특정 ID의 루틴 컬렉션 상세 정보를 조회합니다.
          *
-         * @param collectionId 조회할 루틴 컬렉션 ID
-         * @return 컬렉션 상세 정보 DTO
+         * @param collectionId 조회할 루틴 컬렉션의 고유 ID
+         * @return 컬렉션 상세 정보와 포함된 루틴 목록이 담긴 {@link CollectionDetailDto} 객체
+         * @throws ApiException 해당 ID의 컬렉션을 찾을 수 없는 경우 발생
          */
         @Transactional(readOnly = true)
         public CollectionDetailDto getRoutineCollectionById(Integer collectionId) {
