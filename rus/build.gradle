@@ -18,6 +18,12 @@ repositories {
 	mavenCentral()
 }
 
+dependencyManagement {
+	imports {
+		mavenBom "com.google.cloud:libraries-bom:26.44.0"
+	}
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	compileOnly 'org.projectlombok:lombok'
@@ -38,6 +44,7 @@ dependencies {
 	testImplementation 'io.projectreactor:reactor-test'
 	implementation 'com.auth0:jwks-rsa:0.22.1'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'com.google.cloud:google-cloud-vertexai'
 }
 
 tasks.named('test') {
