@@ -1,6 +1,7 @@
 package com.rus.rus.config; // (패키지 경로는 예시입니다)
 
 import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +33,18 @@ public class VertexAiConfig {
   public VertexAI vertexAI() throws IOException {
     // 별도로 키 파일을 명시하지 않아도 ADC에 의해 자동으로 인증됩니다.
     return new VertexAI(projectId, location);
+  }
+
+  /**
+   * AI가 호출할 루틴 등록 함수(Tool)를 정의합니다.
+   * 
+   * @return Tool SingleTone Bean
+   */
+  @Bean
+  public Tool functionCallingTool() {
+    // 이 안에 함수를 정의
+
+    return Tool.newBuilder().build();
   }
 
   /**
