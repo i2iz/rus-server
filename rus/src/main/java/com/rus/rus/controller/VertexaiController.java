@@ -7,12 +7,14 @@ import com.rus.rus.controller.dto.res.ChatResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,7 +35,8 @@ public class VertexaiController {
   @PostMapping("/message")
   public ResponseEntity<ChatResponseDto> handleChatMessage(
       @RequestBody ChatRequestDto requestDto,
-      @AuthenticationPrincipal String uid) throws IOException {
+      @AuthenticationPrincipal UserDetails userDetails) throws IOException {
+    UUID uid = UUID.fromString(userDetails.getUsername());
 
     String aiResponseText = vertexaiService.getChatResponse(uid, requestDto.getMessages());
 

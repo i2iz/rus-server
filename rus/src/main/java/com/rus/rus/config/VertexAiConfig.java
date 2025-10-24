@@ -1,13 +1,17 @@
-package com.rus.rus.config; // (패키지 경로는 예시입니다)
+package com.rus.rus.config;
 
 import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.FunctionDeclaration;
+import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Tool;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
+import java.util.Collections;
 
 @Configuration
 public class VertexAiConfig {
@@ -42,9 +46,43 @@ public class VertexAiConfig {
    */
   @Bean
   public Tool functionCallingTool() {
-    // 이 안에 함수를 정의
+    /// 이 안에 함수를 정의
 
-    return Tool.newBuilder().build();
+    // 1. 루틴 직접 추가 : API 4-2
+    FunctionDeclaration addCustomRoutine = FunctionDeclaration.newBuilder()
+        .setName("addCustomRoutine") // VertexaiService에서 사용할 함수 이름
+        .setDescription("사용자가 직접 입력한 텍스트 내용과 카테고리 ID로 새로운 개인 루틴을 추가합니다.")
+        .setParameters(
+            Schema.newBuilder()
+                .setType(Type.OBJECT)
+                // 1. 'content' 파라미터 (타입: STRING)
+                .putProperties("content", Schema.newBuilder()
+                    .setType(Type.STRING)
+                    .setDescription("새로 추가할 루틴의 텍스트 내용입니다. (예: '아침 8시에 물 마시기')")
+                    .build())
+                // 2. 'categoryId' 파라미터 (타입: NUMBER)
+                .putProperties("categoryId", Schema.newBuilder()
+                    .setType(Type.NUMBER) // RoutineAddCustomRequestDto의 Integer에 해당
+                    .setDescription(
+                        "루틴이 속할 카테고리의 고유 ID입니다. " +
+                            "사용자가 '운동' 카테고리라고 말하면 2를 사용해야 합니다. " +
+                            "필요한 경우, 카테고리를 직접 추측합니다. " +
+                            "다음은 실제 DB의 카테고리 이름과 ID 매핑입니다: " +
+                            "'수면': 1, " +
+                            "'운동': 2, " +
+                            "'영양소': 3, " +
+                            "'햇빛': 4, " +
+                            "'사회적유대감': 5")
+                    .build())
+                // AI가 이 두 값을 반드시 함께 제공하도록 강제
+                .addRequired("content")
+                .addRequired("categoryId")
+                .build())
+        .build();
+
+    return Tool.newBuilder()
+        .addFunctionDeclarations(addCustomRoutine)
+        .build();
   }
 
   /**
@@ -55,10 +93,13 @@ public class VertexAiConfig {
    */
   @Bean
   public GenerativeModel generativeModel(VertexAI vertexAI) {
+
+    // 시스템 프롬프트 정의
+
     return new GenerativeModel.Builder()
         .setModelName(modelName)
         .setVertexAi(vertexAI)
-        // .setTools(...) // (나중에 함수 호출 기능을 여기에 추가)
+        .setTools(Collections.singletonList(functionCallingTool()))
         .build();
   }
 }
