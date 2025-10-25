@@ -1,22 +1,21 @@
 # GPU 사용 시 build-arg로 BASE_IMAGE를 적절한 CUDA 런타임 이미지로 변경하세요.
 # 예: --build-arg BASE_IMAGE=nvidia/cuda:12.2.0-cudnn8-runtime-ubuntu22.04
-ARG BASE_IMAGE=python:3.11-slim
+ARG BASE_IMAGE=python:3.11-slim-bookworm
 FROM ${BASE_IMAGE} AS base
 
 # 메타데이터
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false \
-    MODEL_PATH=/app/best.pt
+    MODEL_PATH=/app/best.pt \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONOPTIMIZE=1
 
 # 시스템 패키지 설치 (이미지에 따라 apt 사용)
 # OpenCV/Pillow 관련 라이브러리와 빌드 도구 일부 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    git \
     ca-certificates \
-    wget \
-    curl \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
@@ -40,6 +39,7 @@ COPY requirements.txt /app/requirements.txt
 # ultralytics와 torch 같은 대형 패키지 설치가 오래 걸릴 수 있습니다.
 # --no-cache-dir로 캐시를 남기지 않습니다.
 RUN python -m pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.3.1 torchvision==0.18.1 && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 # 애플리케이션 코드 복사
