@@ -53,7 +53,11 @@ public class SecurityConfig {
                 "/routine/recommend",
                 "/routine",
                 "/routine/challenge",
-                "/routine/collections").permitAll();
+                "/routine/collections",
+                        "/routine/test/**",           // 테스트 엔드포인트 추가
+                        "/chatbot.html",
+                        "/chatbot/**"
+                ).permitAll();
 
                 if (swaggerEnabled) {
                     // Swagger UI 및 API docs에 인증 없이 접근 허용

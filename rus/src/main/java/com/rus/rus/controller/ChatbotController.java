@@ -1,4 +1,3 @@
-/*
 package com.rus.rus.controller;
 
 import com.rus.rus.application.ChatbotService;
@@ -15,7 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -132,7 +133,7 @@ public class ChatbotController {
     /**
      * JWT 토큰에서 uid 추출
      */
-/*
+
     private String extractUidFromToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 헤더입니다.");
@@ -146,6 +147,22 @@ public class ChatbotController {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "유효하지 않은 JWT 토큰입니다.");
         }
     }
+
+    // ChatbotController.java 맨 아래에 추가
+    @PostMapping("/test/token")
+    public ResponseEntity<Map<String, String>> generateToken(@RequestParam String uid) {
+        try {
+            String token = jwtUtil.generateToken(uid);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("uid", uid);
+            response.put("token", token);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "토큰 생성 실패");
+        }
+    }
 }
- */
+
 

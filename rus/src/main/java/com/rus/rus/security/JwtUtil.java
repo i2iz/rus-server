@@ -9,6 +9,10 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SigningKeyResolver;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import java.util.Date;
+import javax.crypto.SecretKey;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.SignatureAlgorithm;
 
 import java.net.URL;
 import java.security.Key;
@@ -18,6 +22,10 @@ public class JwtUtil {
 
     @Value("${supabase.jwks.url}")
     private String jwksUrl;
+
+    // 테스트용 시크릿 키
+    @Value("${jwt.test.secret:test-secret-key-for-development-only-do-not-use-in-production}")
+    private String testSecret;
 
     // Supabase의 JWKS 엔드포인트에서 공개키를 가져와 토큰 서명을 검증하는 리졸버
     // ✅ SigningKeyResolverAdapter를 직접 사용하도록 수정
@@ -77,5 +85,24 @@ public class JwtUtil {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // ==================== 테스트용 토큰 생성 메서드 추가 ====================
+    /**
+     * 테스트용 JWT 토큰 생성 (개발 환경에서만 사용)
+     * 주의: 프로덕션에서는 Supabase에서 발급한 토큰만 사용해야 함
+     */
+    public String generateToken(String uid) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + 86400000); // 24시간
+
+        SecretKey key = Keys.hmacShaKeyFor(testSecret.getBytes());
+
+        return Jwts.builder()
+                .setSubject(uid)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 }
