@@ -1,5 +1,6 @@
 package com.rus.rus.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
@@ -13,6 +14,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.rus.rus.controller.dto.ChatMessageDto;
 import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
+import com.rus.rus.controller.dto.res.PersonalRoutineResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,7 @@ public class VertexaiService {
 
   private final GenerativeModel generativeModel;
   private final RoutineService routineService;
-  private final ObjectMapper objectMapper; // 사용되지 않지만 유지
+  private final ObjectMapper objectMapper; // DTO -> JSON 변환에 사용
 
   public String getChatResponse(String uid, List<ChatMessageDto> messages) throws IOException {
 
@@ -123,6 +125,29 @@ public class VertexaiService {
                     .build())
                 .build());
           }
+        } else if (functionCall.getName().equals("getPersonalRoutines")) {
+          try {
+            log.info("RoutineService.getPersonalRoutines 호출. uid: {}", uid);
+            // 실제 서비스 메서드 호출하여 루틴 목록 DTO 받기
+            PersonalRoutineResponseDto routinesDto = routineService.getPersonalRoutines(uid); //
+
+            // DTO 객체를 JSON 문자열로 변환 (AI가 결과를 텍스트로 이해하도록)
+            String routinesJson = objectMapper.writeValueAsString(routinesDto);
+
+            // 성공 응답 Part 생성 및 리스트에 추가
+            functionResponseParts.add(createSuccessResponsePart(functionCall.getName(), routinesJson));
+            log.info("루틴 목록 조회 성공, 결과를 JSON 형태로 AI에게 반환합니다.");
+
+          } catch (JsonProcessingException e) {
+            // JSON 변환 실패 시
+            log.error("루틴 목록 JSON 변환 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(), "루틴 목록 결과를 처리하는 중 오류가 발생했습니다."));
+          } catch (Exception e) {
+            // RoutineService 호출 실패 시
+            log.error("루틴 목록 조회 중 오류 발생: {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(), "루틴 목록 조회에 실패했습니다: " + e.getMessage()));
+          }
         } else {
           // 알 수 없는 함수 호출 처리
           log.warn("알 수 없는 Function Call 요청: {}", functionCall.getName());
@@ -154,6 +179,56 @@ public class VertexaiService {
       log.info("일반 텍스트 응답 반환");
       return ResponseHandler.getText(response);
     }
+  }
+
+  /**
+   * Function Calling 성공 응답 Part를 생성합니다.
+   * 
+   * @param functionName 호출된 함수 이름
+   * @param message      AI에게 전달할 결과 메시지 (텍스트 또는 JSON 문자열)
+   * @return 생성된 Part 객체
+   */
+  private Part createSuccessResponsePart(String functionName, String message) {
+    Struct.Builder responseStruct = Struct.newBuilder();
+    responseStruct.putFields("status", Value.newBuilder().setStringValue("SUCCESS").build());
+    responseStruct.putFields("result", Value.newBuilder().setStringValue(message).build());
+    return Part.newBuilder()
+        .setFunctionResponse(FunctionResponse.newBuilder()
+            .setName(functionName)
+            .setResponse(responseStruct.build())
+            .build())
+        .build();
+  }
+
+  /**
+   * Function Calling 실패 응답 Part를 생성합니다. (기본 상태 코드 "ERROR")
+   * 
+   * @param functionName 호출된 함수 이름
+   * @param errorMessage AI에게 전달할 에러 메시지
+   * @return 생성된 Part 객체
+   */
+  private Part createErrorResponsePart(String functionName, String errorMessage) {
+    return createErrorResponsePart(functionName, errorMessage, "ERROR");
+  }
+
+  /**
+   * Function Calling 실패 응답 Part를 생성합니다. (상태 코드 지정 가능)
+   * 
+   * @param functionName 호출된 함수 이름
+   * @param errorMessage AI에게 전달할 에러 메시지
+   * @param statusCode   상태 코드 (예: "ERROR", "UNKNOWN_FUNCTION")
+   * @return 생성된 Part 객체
+   */
+  private Part createErrorResponsePart(String functionName, String errorMessage, String statusCode) {
+    Struct.Builder errorStruct = Struct.newBuilder();
+    errorStruct.putFields("status", Value.newBuilder().setStringValue(statusCode).build());
+    errorStruct.putFields("message", Value.newBuilder().setStringValue(errorMessage).build());
+    return Part.newBuilder()
+        .setFunctionResponse(FunctionResponse.newBuilder()
+            .setName(functionName)
+            .setResponse(errorStruct.build())
+            .build())
+        .build();
   }
 
   private Content convertDtoToContent(ChatMessageDto dto) {
