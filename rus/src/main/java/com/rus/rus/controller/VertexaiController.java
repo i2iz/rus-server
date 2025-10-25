@@ -38,7 +38,7 @@ public class VertexaiController {
       @AuthenticationPrincipal UserDetails userDetails) throws IOException {
     UUID uid = UUID.fromString(userDetails.getUsername());
 
-    String aiResponseText = vertexaiService.getChatResponse(uid, requestDto.getMessages());
+    String aiResponseText = vertexaiService.getChatResponse(uid.toString(), requestDto.getMessages());
 
     ChatResponseDto response = new ChatResponseDto(
         new ChatMessageDto("MODEL", aiResponseText));
