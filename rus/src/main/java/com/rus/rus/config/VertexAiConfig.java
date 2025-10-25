@@ -152,7 +152,11 @@ public class VertexAiConfig {
                                                                 +
                                                                 "루틴 ID를 모를 경우, 사용자에게 어떤 루틴인지 다시 질문할 수 있습니다."
                                                                 +
-                                                                "**중요:** `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출해야 하는데 **어떤 루틴의 ID(`routineId`)를 사용해야 할지 대화 맥락만으로 명확하지 않다면, 사용자에게 다시 질문하지 말고 먼저 `getPersonalRoutines` 함수를 호출하여 전체 루틴 목록(ID 포함)을 얻으세요.** 그 다음, 사용자가 언급한 루틴 내용과 가장 일치하는 ID를 찾아서 `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출하세요."
+                                                                "**중요:** `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출해야 하는데 어떤 루틴의 ID(`routineId`)를 사용해야 할지 대화 맥락만으로 명확하지 않다면, 사용자에게 다시 질문하지 말고 먼저 `getPersonalRoutines` 함수를 호출하여 전체 루틴 목록(ID 포함)을 **JSON 형식으로** 얻으세요. "
+                                                                +
+                                                                "**그 다음, `getPersonalRoutines` 함수의 결과로 받은 JSON 데이터 내에서 사용자가 언급한 루틴의 내용(`content`)과 일치하는 항목을 찾아 해당 항목의 `id` 값을 정확히 추출하세요.** "
+                                                                +
+                                                                "**추출한 `id` 값을 `routineId` 파라미터로 사용하여** `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출하세요. 절대로 임의의 숫자를 사용하거나 JSON 결과와 관련 없는 ID를 추측하지 마세요."
                                                                 +
                                                                 "\n\n" +
                                                                 // 카테고리 ID 비밀 유지
