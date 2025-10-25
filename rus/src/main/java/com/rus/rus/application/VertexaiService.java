@@ -65,6 +65,7 @@ public class VertexaiService {
         log.info("Function Call 감지: {}", functionCall.getName());
 
         if (functionCall.getName().equals("addCustomRoutine")) {
+          // 루틴 추가 함수 호출
           // Function Call 인자 파싱
           Map<String, Value> args = functionCall.getArgs().getFieldsMap();
           String content;
@@ -126,6 +127,7 @@ public class VertexaiService {
                 .build());
           }
         } else if (functionCall.getName().equals("getPersonalRoutines")) {
+          // 루틴 조회 함수 호출
           try {
             log.info("RoutineService.getPersonalRoutines 호출. uid: {}", uid);
             // 실제 서비스 메서드 호출하여 루틴 목록 DTO 받기
@@ -147,6 +149,52 @@ public class VertexaiService {
             log.error("루틴 목록 조회 중 오류 발생: {}", e.getMessage());
             functionResponseParts
                 .add(createErrorResponsePart(functionCall.getName(), "루틴 목록 조회에 실패했습니다: " + e.getMessage()));
+          }
+        } else if (functionCall.getName().equals("checkRoutineAsDone")) {
+          // 루틴 달성 체크
+          Map<String, Value> args = functionCall.getArgs().getFieldsMap();
+          int routineId = 0; // 초기화
+          try {
+            routineId = (int) args.get("routineId").getNumberValue();
+          } catch (Exception e) {
+            log.error("FunctionCall 인자 파싱 실패 (checkRoutineAsDone): {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
+            continue;
+          }
+          try {
+            log.info("RoutineService.checkRoutineAttainment 호출. uid: {}, routineId: {}", uid, routineId);
+            // RoutineService의 checkRoutineAttainment 메서드 호출
+            routineService.checkRoutineAttainment(uid, routineId); //
+            functionResponseParts
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 완료 처리되었습니다."));
+          } catch (Exception e) {
+            log.error("루틴 달성 체크 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
+                "루틴(ID: " + routineId + ") 완료 처리에 실패했습니다: " + e.getMessage()));
+          }
+        } else if (functionCall.getName().equals("uncheckRoutine")) {
+          // 루틴 체크 해제
+          Map<String, Value> args = functionCall.getArgs().getFieldsMap();
+          int routineId = 0; // 초기화
+          try {
+            routineId = (int) args.get("routineId").getNumberValue();
+          } catch (Exception e) {
+            log.error("FunctionCall 인자 파싱 실패 (uncheckRoutine): {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
+            continue;
+          }
+          try {
+            log.info("RoutineService.uncheckRoutineAttainment 호출. uid: {}, routineId: {}", uid, routineId);
+            // RoutineService의 uncheckRoutineAttainment 메서드 호출
+            routineService.uncheckRoutineAttainment(uid, routineId); //
+            functionResponseParts
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")의 완료 체크가 해제되었습니다."));
+          } catch (Exception e) {
+            log.error("루틴 체크 해제 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
+                "루틴(ID: " + routineId + ") 체크 해제에 실패했습니다: " + e.getMessage()));
           }
         } else {
           // 알 수 없는 함수 호출 처리
