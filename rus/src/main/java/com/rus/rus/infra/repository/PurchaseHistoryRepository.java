@@ -21,6 +21,7 @@ public interface PurchaseHistoryRepository extends JpaRepository<PurchaseHistory
   @Query("SELECT ph FROM PurchaseHistory ph " +
       "JOIN FETCH ph.product p " +
       "WHERE ph.userProfile.uid = :uid " +
+      "AND ph.used = false " +
       "ORDER BY ph.purchasedAt DESC") // 최신 구매 순으로 정렬
   List<PurchaseHistory> findAllByUidWithProductFetchJoin(@Param("uid") String uid);
 }
