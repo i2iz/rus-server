@@ -5,6 +5,7 @@ import com.rus.rus.common.ErrorResponseDTO;
 import com.rus.rus.controller.dto.req.PurchaseRequestDto;
 import com.rus.rus.controller.dto.res.ProductResponseDto;
 import com.rus.rus.controller.dto.res.PurchaseResponseDto;
+import com.rus.rus.controller.dto.res.PurchaseHistoryResponseDto;
 import com.rus.rus.domain.Product;
 import com.rus.rus.domain.PurchaseHistory;
 import com.rus.rus.domain.UserProfile;
@@ -102,5 +103,20 @@ public class ShopService {
 
     // 6. 결과 반환
     return PurchaseResponseDto.from(savedPurchase, newPointTotal);
+  }
+
+  /**
+   * 인증된 사용자의 전체 구매 내역을 조회합니다.
+   * 
+   * @param uid 사용자 ID (인증 토큰에서 가져옴)
+   * @return 구매 내역 DTO 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<PurchaseHistoryResponseDto> getPurchaseHistory(String uid) {
+    List<PurchaseHistory> histories = purchaseHistoryRepository.findAllByUidWithProductFetchJoin(uid);
+
+    return histories.stream()
+        .map(PurchaseHistoryResponseDto::from)
+        .collect(Collectors.toList());
   }
 }

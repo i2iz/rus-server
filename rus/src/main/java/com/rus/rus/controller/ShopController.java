@@ -5,6 +5,7 @@ import com.rus.rus.common.ApiException;
 import com.rus.rus.controller.dto.req.PurchaseRequestDto;
 import com.rus.rus.controller.dto.res.ProductResponseDto;
 import com.rus.rus.controller.dto.res.PurchaseResponseDto;
+import com.rus.rus.controller.dto.res.PurchaseHistoryResponseDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -56,5 +57,24 @@ public class ShopController {
       @AuthenticationPrincipal UserDetails userDetails,
       @RequestBody PurchaseRequestDto requestDto) {
     return shopService.purchaseProduct(userDetails.getUsername(), requestDto);
+  }
+
+  /**
+   * 내 구매 내역 조회
+   * 
+   * @param uid 인증된 사용자 ID
+   * @return 구매 내역 리스트
+   */
+  @GetMapping("/purchases/{uid}")
+  public List<PurchaseHistoryResponseDto> getMyPurchases(
+      @PathVariable("uid") UUID uid,
+      @AuthenticationPrincipal UserDetails userDetails) {
+
+    UUID currentUserId = UUID.fromString(userDetails.getUsername());
+
+    if (!currentUserId.equals(uid)) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "본인 외 사용자의 정보는 열람할 수 없습니다");
+    }
+    return shopService.getPurchaseHistory(uid.toString());
   }
 }
