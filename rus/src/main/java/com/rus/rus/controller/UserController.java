@@ -263,4 +263,25 @@ public class UserController {
 
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * 사용자에게 point를 25만큼 추가합니다.
+     * * @param uid 사용자 uid
+     * 
+     * @param userDetails Authentication된 사용자의 정보가 저장
+     */
+    @PatchMapping("/add/point/{uid}")
+    public ResponseEntity<Void> addPoint(
+            @PathVariable("uid") UUID uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+
+        if (!currentUserId.equals(uid)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "본인 외 사용자의 정보는 수정할 수 없습니다.");
+        }
+
+        userService.addPoint(uid);
+
+        return ResponseEntity.noContent().build();
+    }
 }

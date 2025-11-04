@@ -370,4 +370,18 @@ public class UserService {
                 userProfileRepository.save(userProfile);
         }
 
+        /**
+         * 사용자에게 point를 추가합니다.
+         * * @param uid Point를 추가할 사용자 고유 식별자
+         */
+        @Transactional
+        public void addPoint(UUID uid) {
+                UserProfile userProfile = userProfileRepository.findById(uid.toString())
+                                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+                // 기존 Point에 250을 추가합니다.
+                userProfile.setPoint(userProfile.getPoint() + 50);
+                userProfileRepository.save(userProfile);
+        }
+
 }
