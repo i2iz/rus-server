@@ -56,6 +56,8 @@ public class SecurityConfig {
                     "/routine/collections",
                     "/routine/collections/**",
                     "/users/ranking",
+                    "/shop/products",
+                    "/shop/products/**",
                     "/kfood/detect").permitAll();
 
             if (swaggerEnabled) {

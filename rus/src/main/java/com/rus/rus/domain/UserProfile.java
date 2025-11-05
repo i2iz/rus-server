@@ -10,7 +10,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 @Entity
-@Table(name="users_profile")
+@Table(name = "users_profile")
 @Setter
 @Getter
 @NoArgsConstructor
@@ -38,6 +38,10 @@ public class UserProfile {
 
   @Builder.Default
   @Column(nullable = false)
+  private Integer point = 0;
+
+  @Builder.Default
+  @Column(nullable = false)
   @JsonIgnore
   private boolean isFirstLogin = false;
 
@@ -55,7 +59,7 @@ public class UserProfile {
   @Builder.Default
   private Double weight = 0.0;
 
-  @Builder.Default  // ⭐ 추가
+  @Builder.Default // ⭐ 추가
   @Column(name = "streak")
   private Integer streak = 0;
 
@@ -64,7 +68,7 @@ public class UserProfile {
 
   @PrePersist
   public void prePersist() {
-    if(this.createdAt == null) {
+    if (this.createdAt == null) {
       this.createdAt = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toLocalDateTime();
     }
   }
