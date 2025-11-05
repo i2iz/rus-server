@@ -1,5 +1,6 @@
 # Stage 1
-FROM openjdk:21-jdk-slim AS build
+# FROM openjdk:21-jdk-slim AS build - 지원 종료?
+FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 
 COPY gradlew .
@@ -14,7 +15,8 @@ COPY src src
 RUN ./gradlew bootJar
 
 # Stage 2
-FROM openjdk:21-jdk-slim
+# FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 COPY --from=build /app/build/libs/*.jar app.jar
