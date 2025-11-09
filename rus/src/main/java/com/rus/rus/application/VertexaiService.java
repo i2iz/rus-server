@@ -17,6 +17,7 @@ import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
 import com.rus.rus.controller.dto.res.PersonalRoutineResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "vertex.enabled", havingValue = "true")
 public class VertexaiService {
 
   private final GenerativeModel generativeModel;

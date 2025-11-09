@@ -9,6 +9,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,7 @@ import java.util.Collections;
 import java.util.Arrays;
 
 @Configuration
+@ConditionalOnProperty(name = "vertex.enabled", havingValue = "true")
 public class VertexAiConfig {
 
         // application.properties 에서 값 주입
