@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import okhttp3.OkHttpClient;
 
 @Configuration
-@ConditionalOnProperty(name = "openai.enabled", havingValue = "true")
 public class OpenAIConfig {
 
     @Value("${openai.api.key}")

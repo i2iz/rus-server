@@ -20,7 +20,6 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/vertexai")
-@ConditionalOnProperty(name = "vertex.enabled", havingValue = "true")
 public class VertexaiController {
 
   // (다음 단계에서 ChatbotService를 구현하고 주입해야 합니다)
@@ -36,14 +35,14 @@ public class VertexaiController {
    */
   @PostMapping("/message")
   public ResponseEntity<ChatResponseDto> handleChatMessage(
-          @RequestBody ChatRequestDto requestDto,
-          @AuthenticationPrincipal UserDetails userDetails) throws IOException {
+      @RequestBody ChatRequestDto requestDto,
+      @AuthenticationPrincipal UserDetails userDetails) throws IOException {
     UUID uid = UUID.fromString(userDetails.getUsername());
 
     String aiResponseText = vertexaiService.getChatResponse(uid.toString(), requestDto.getMessages());
 
     ChatResponseDto response = new ChatResponseDto(
-            new ChatMessageDto("MODEL", aiResponseText));
+        new ChatMessageDto("MODEL", aiResponseText));
 
     return ResponseEntity.ok(response);
   }

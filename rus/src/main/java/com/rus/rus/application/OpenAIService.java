@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "openai.enabled", havingValue = "true")
 public class OpenAIService {
 
     private final OpenAIProps props;
@@ -145,14 +144,16 @@ public class OpenAIService {
                 case "checkRoutineAsDone": {
                     JsonNode args = safeParse(argJson);
                     int routineId = args.path("routineId").asInt(0);
-                    if (routineId == 0) return errorJson("AI가 잘못된 함수 인자(routineId)를 전달했습니다.");
+                    if (routineId == 0)
+                        return errorJson("AI가 잘못된 함수 인자(routineId)를 전달했습니다.");
                     routineService.checkRoutineAttainment(uid, routineId);
                     return okJson("루틴(ID: " + routineId + ")이(가) 완료 처리되었습니다.");
                 }
                 case "uncheckRoutine": {
                     JsonNode args = safeParse(argJson);
                     int routineId = args.path("routineId").asInt(0);
-                    if (routineId == 0) return errorJson("AI가 잘못된 함수 인자(routineId)를 전달했습니다.");
+                    if (routineId == 0)
+                        return errorJson("AI가 잘못된 함수 인자(routineId)를 전달했습니다.");
                     routineService.uncheckRoutineAttainment(uid, routineId);
                     return okJson("루틴(ID: " + routineId + ")의 완료 체크가 해제되었습니다.");
                 }
@@ -217,36 +218,31 @@ public class OpenAIService {
                 "사용자가 직접 입력했거나 AI가 제안한 텍스트와 카테고리로 개인 루틴을 1개 추가",
                 obj(schemaStr("content", "string", "추가할 루틴 텍스트"),
                         schemaNum("categoryId", "루틴 카테고리의 숫자 ID")),
-                arr("content", "categoryId")
-        ));
+                arr("content", "categoryId")));
 
         tools.add(toolFn(
                 "getPersonalRoutines",
                 "사용자의 개인 루틴 목록 및 오늘 달성 여부 조회",
-                obj(), null
-        ));
+                obj(), null));
 
         tools.add(toolFn(
                 "checkRoutineAsDone",
                 "특정 개인 루틴을 오늘 완료로 체크",
                 obj(schemaNum("routineId", "달성 체크할 루틴의 고유 ID")),
-                arr("routineId")
-        ));
+                arr("routineId")));
 
         tools.add(toolFn(
                 "uncheckRoutine",
                 "특정 개인 루틴의 오늘 달성 체크를 해제",
                 obj(schemaNum("routineId", "체크 해제할 루틴의 고유 ID")),
-                arr("routineId")
-        ));
+                arr("routineId")));
 
         // ✅ 추가: 루틴 삭제 툴
         tools.add(toolFn(
                 "deleteRoutine",
                 "특정 개인 루틴을 삭제",
                 obj(schemaNum("routineId", "삭제할 루틴의 고유 ID")),
-                arr("routineId")
-        ));
+                arr("routineId")));
 
         return tools;
     }
@@ -300,7 +296,8 @@ public class OpenAIService {
 
     private ArrayNode arr(String... keys) {
         ArrayNode a = mapper.createArrayNode();
-        for (String k : keys) a.add(k);
+        for (String k : keys)
+            a.add(k);
         return a;
     }
 
@@ -335,17 +332,16 @@ public class OpenAIService {
     }
 
     // === 시스템 프롬프트 (Vertex 버전과 의미 동일) ===
-    private static final String SYSTEM_PROMPT =
-            "당신은 'RUS' 건강 관리 앱의 친절한 AI 어시스턴트 '세라(Sera)'입니다. " +
-                    "역할: 사용자가 5가지 카테고리(수면, 운동, 영양소, 햇빛, 사회적유대감) 루틴을 관리하도록 돕기. " +
-                    "항상 공감/지지/동기부여 톤을 사용하고 일상 대화에도 자연스럽게 응답합니다.\n\n" +
-                    "루틴 추천 요청 시 목표를 파악해 매일 가능한 구체 루틴 1~3개를 제안하고, 추가 여부를 물어보세요.\n\n" +
-                    "사용자가 루틴 추가를 원하거나 동의하면 addCustomRoutine 함수를 호출하세요. " +
-                    "대화 맥락을 바탕으로 적절한 카테고리를 스스로 추론해 숫자 ID(categoryId)를 제공합니다. " +
-                    "목록 요청 시 getPersonalRoutines, 완료 보고 시 checkRoutineAsDone, 취소 시 uncheckRoutine을 호출하세요.\n\n" +
-                    "특정 루틴 ID가 불명확하면 먼저 getPersonalRoutines를 호출하여 JSON 목록을 받고, " +
-                    "해당 content와 일치하는 항목에서 id를 찾아 사용하세요. 임의 추측 금지.\n\n" +
-                    "절대 사용자에게 카테고리 ↔ 숫자 ID 매핑을 드러내지 마세요. 내부적으로만 사용합니다. " +
-                    "내부 매핑: '수면':1, '운동':2, '영양소':3, '햇빛':4, '사회적유대감':5.\n\n" +
-                    "의학적 조언은 제공하지 말고 일반 건강 정보와 루틴 관리에 집중하세요. 항상 한국어로 답하세요.";
+    private static final String SYSTEM_PROMPT = "당신은 'RUS' 건강 관리 앱의 친절한 AI 어시스턴트 '세라(Sera)'입니다. " +
+            "역할: 사용자가 5가지 카테고리(수면, 운동, 영양소, 햇빛, 사회적유대감) 루틴을 관리하도록 돕기. " +
+            "항상 공감/지지/동기부여 톤을 사용하고 일상 대화에도 자연스럽게 응답합니다.\n\n" +
+            "루틴 추천 요청 시 목표를 파악해 매일 가능한 구체 루틴 1~3개를 제안하고, 추가 여부를 물어보세요.\n\n" +
+            "사용자가 루틴 추가를 원하거나 동의하면 addCustomRoutine 함수를 호출하세요. " +
+            "대화 맥락을 바탕으로 적절한 카테고리를 스스로 추론해 숫자 ID(categoryId)를 제공합니다. " +
+            "목록 요청 시 getPersonalRoutines, 완료 보고 시 checkRoutineAsDone, 취소 시 uncheckRoutine을 호출하세요.\n\n" +
+            "특정 루틴 ID가 불명확하면 먼저 getPersonalRoutines를 호출하여 JSON 목록을 받고, " +
+            "해당 content와 일치하는 항목에서 id를 찾아 사용하세요. 임의 추측 금지.\n\n" +
+            "절대 사용자에게 카테고리 ↔ 숫자 ID 매핑을 드러내지 마세요. 내부적으로만 사용합니다. " +
+            "내부 매핑: '수면':1, '운동':2, '영양소':3, '햇빛':4, '사회적유대감':5.\n\n" +
+            "의학적 조언은 제공하지 말고 일반 건강 정보와 루틴 관리에 집중하세요. 항상 한국어로 답하세요.";
 }

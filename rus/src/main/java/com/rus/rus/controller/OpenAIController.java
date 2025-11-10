@@ -17,7 +17,6 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/openai")
-@ConditionalOnProperty(name = "openai.enabled", havingValue = "true")
 public class OpenAIController {
 
     private final OpenAIService openAIService;
@@ -34,4 +33,3 @@ public class OpenAIController {
         return ResponseEntity.ok(resp);
     }
 }
-
