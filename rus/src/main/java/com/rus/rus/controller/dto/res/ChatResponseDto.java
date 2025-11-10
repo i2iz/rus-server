@@ -19,5 +19,4 @@ public class ChatResponseDto {
    * (role은 "MODEL"이 됩니다)
    */
   private ChatMessageDto message;
-  private String audioBase64;
 }

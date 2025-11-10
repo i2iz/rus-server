@@ -1,4 +1,3 @@
-// src/main/java/com/rus/rus/controller/OpenAIController.java
 package com.rus.rus.controller;
 
 import com.rus.rus.application.OpenAIService;
@@ -12,12 +11,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@ConditionalOnProperty(name="openai.enabled", havingValue="true", matchIfMissing=true)
 @RequestMapping("/v1/openai")
+@ConditionalOnProperty(name = "openai.enabled", havingValue = "true")
 public class OpenAIController {
 
     private final OpenAIService openAIService;
@@ -25,13 +25,13 @@ public class OpenAIController {
     @PostMapping("/message")
     public ResponseEntity<ChatResponseDto> handleChatMessage(
             @RequestBody ChatRequestDto requestDto,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails) throws IOException {
 
         UUID uid = UUID.fromString(userDetails.getUsername());
-        String aiResponseText = openAIService.getChatResponse(uid.toString(), requestDto.getMessages());
+        String aiText = openAIService.getChatResponse(uid.toString(), requestDto.getMessages());
 
-        ChatResponseDto response =
-                new ChatResponseDto(new ChatMessageDto("MODEL", aiResponseText), null);
-        return ResponseEntity.ok(response);
+        ChatResponseDto resp = new ChatResponseDto(new ChatMessageDto("MODEL", aiText));
+        return ResponseEntity.ok(resp);
     }
 }
+
