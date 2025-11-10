@@ -45,6 +45,7 @@ dependencies {
 	implementation 'com.auth0:jwks-rsa:0.22.1'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'com.google.cloud:google-cloud-vertexai'
+	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 tasks.named('test') {

@@ -5,6 +5,7 @@ import com.rus.rus.controller.dto.ChatMessageDto;
 import com.rus.rus.controller.dto.req.ChatRequestDto;
 import com.rus.rus.controller.dto.res.ChatResponseDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,7 +27,7 @@ public class VertexaiController {
 
   /**
    * 챗봇 메시지 전송 및 응답 API
-   * 
+   *
    * @param requestDto 클라이언트가 보낸 전체 대화 기록
    * @param uid        JWT 토큰에서 추출된 사용자 식별자
    * @return AI의 최종 텍스트 응답

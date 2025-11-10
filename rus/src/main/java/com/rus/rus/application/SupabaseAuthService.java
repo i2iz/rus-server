@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.rus.rus.common.ApiException;
 
 @Service
-public class SupabaseAuthService {
+public class  SupabaseAuthService {
 
   private final WebClient webClient;
   private final String supabaseUrl;

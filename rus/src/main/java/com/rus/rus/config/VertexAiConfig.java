@@ -9,6 +9,7 @@ import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -33,7 +34,7 @@ public class VertexAiConfig {
          * VertexAI 클라이언트 객체를 Spring Bean으로 등록합니다.
          * 이 객체가 생성될 때 SDK가 자동으로 GOOGLE_APPLICATION_CREDENTIALS 를 찾습니다.
          * * @return VertexAI 싱글톤 빈
-         * 
+         *
          * @throws IOException
          */
         @Bean
@@ -63,7 +64,7 @@ public class VertexAiConfig {
                                                 // 2. 'categoryId' 파라미터 (타입: NUMBER)
                                                 .putProperties("categoryId", Schema.newBuilder()
                                                                 .setType(Type.NUMBER) // RoutineAddCustomRequestDto의
-                                                                                      // Integer에 해당
+                                                                // Integer에 해당
                                                                 .setDescription(
                                                                                 "루틴이 속할 카테고리의 고유 ID(숫자)입니다. "
                                                                                                 +
@@ -89,7 +90,7 @@ public class VertexAiConfig {
                                 .setParameters(Schema.newBuilder().setType(Type.OBJECT)
                                                 .putProperties("routineId", Schema.newBuilder()
                                                                 .setType(Type.NUMBER) // users_routine
-                                                                                      // 테이블의 id (PK)
+                                                                // 테이블의 id (PK)
                                                                 .setDescription("달성 체크할 루틴의 고유 ID(숫자)입니다. AI는 대화 맥락이나 이전 루틴 목록 조회 결과를 바탕으로 사용자가 어떤 루틴을 지칭하는지 정확히 파악하여 ID를 제공해야 합니다.")
                                                                 .build())
                                                 .addRequired("routineId") // ID는 필수
@@ -103,7 +104,7 @@ public class VertexAiConfig {
                                 .setParameters(Schema.newBuilder().setType(Type.OBJECT)
                                                 .putProperties("routineId", Schema.newBuilder()
                                                                 .setType(Type.NUMBER) // users_routine
-                                                                                      // 테이블의 id (PK)
+                                                                // 테이블의 id (PK)
                                                                 .setDescription("체크 해제할 루틴의 고유 ID(숫자)입니다. AI는 대화 맥락이나 이전 루틴 목록 조회 결과를 바탕으로 사용자가 어떤 루틴을 지칭하는지 정확히 파악하여 ID를 제공해야 합니다.")
                                                                 .build())
                                                 .addRequired("routineId") // ID는 필수
@@ -121,7 +122,7 @@ public class VertexAiConfig {
         /**
          * GenerativeModel 객체를 Spring Bean으로 등록합니다.
          * * @param vertexAI (자동으로 주입됨)
-         * 
+         *
          * @return GenerativeModel 싱글톤 빈
          */
         @Bean

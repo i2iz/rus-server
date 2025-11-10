@@ -17,6 +17,7 @@ import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
 import com.rus.rus.controller.dto.res.PersonalRoutineResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -231,7 +232,7 @@ public class VertexaiService {
 
   /**
    * Function Calling 성공 응답 Part를 생성합니다.
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param message      AI에게 전달할 결과 메시지 (텍스트 또는 JSON 문자열)
    * @return 생성된 Part 객체
@@ -250,7 +251,7 @@ public class VertexaiService {
 
   /**
    * Function Calling 실패 응답 Part를 생성합니다. (기본 상태 코드 "ERROR")
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param errorMessage AI에게 전달할 에러 메시지
    * @return 생성된 Part 객체
@@ -261,7 +262,7 @@ public class VertexaiService {
 
   /**
    * Function Calling 실패 응답 Part를 생성합니다. (상태 코드 지정 가능)
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param errorMessage AI에게 전달할 에러 메시지
    * @param statusCode   상태 코드 (예: "ERROR", "UNKNOWN_FUNCTION")
