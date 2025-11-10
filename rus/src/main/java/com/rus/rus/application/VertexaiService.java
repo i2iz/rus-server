@@ -17,6 +17,7 @@ import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
 import com.rus.rus.controller.dto.res.PersonalRoutineResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "vertex.enabled", havingValue = "true")
 public class VertexaiService {
 
   private final GenerativeModel generativeModel;
@@ -41,9 +43,9 @@ public class VertexaiService {
     List<Content> history = new ArrayList<>();
     if (messages.size() > 1) {
       history = messages.stream()
-          .limit(messages.size() - 1)
-          .map(this::convertDtoToContent)
-          .collect(Collectors.toList());
+              .limit(messages.size() - 1)
+              .map(this::convertDtoToContent)
+              .collect(Collectors.toList());
       chatSession.setHistory(history);
     }
 
@@ -79,13 +81,13 @@ public class VertexaiService {
             Struct.Builder errorStruct = Struct.newBuilder();
             errorStruct.putFields("status", Value.newBuilder().setStringValue("ERROR").build());
             errorStruct.putFields("message",
-                Value.newBuilder().setStringValue("AI가 잘못된 함수 인자(content 또는 categoryId)를 전달했습니다.").build());
+                    Value.newBuilder().setStringValue("AI가 잘못된 함수 인자(content 또는 categoryId)를 전달했습니다.").build());
             functionResponseParts.add(Part.newBuilder()
-                .setFunctionResponse(FunctionResponse.newBuilder()
-                    .setName(functionCall.getName())
-                    .setResponse(errorStruct.build())
-                    .build())
-                .build());
+                    .setFunctionResponse(FunctionResponse.newBuilder()
+                            .setName(functionCall.getName())
+                            .setResponse(errorStruct.build())
+                            .build())
+                    .build());
             continue; // 다음 Part 처리로 넘어감
           }
 
@@ -97,20 +99,20 @@ public class VertexaiService {
           // 실제 서비스 로직 호출
           try {
             log.info("RoutineService.addCustomRoutineToUser 호출. uid: {}, content: {}, categoryId: {}",
-                uid, routineDto.getContent(), routineDto.getCategoryId());
+                    uid, routineDto.getContent(), routineDto.getCategoryId());
             routineService.addCustomRoutineToUser(uid, routineDto);
 
             // 성공 응답 Part 생성 및 리스트에 추가
             Struct.Builder responseStruct = Struct.newBuilder();
             responseStruct.putFields("status", Value.newBuilder().setStringValue("SUCCESS").build());
             responseStruct.putFields("message",
-                Value.newBuilder().setStringValue("루틴 '" + content + "'이(가) 성공적으로 추가되었습니다.").build());
+                    Value.newBuilder().setStringValue("루틴 '" + content + "'이(가) 성공적으로 추가되었습니다.").build());
             functionResponseParts.add(Part.newBuilder()
-                .setFunctionResponse(FunctionResponse.newBuilder()
-                    .setName(functionCall.getName())
-                    .setResponse(responseStruct.build())
-                    .build())
-                .build());
+                    .setFunctionResponse(FunctionResponse.newBuilder()
+                            .setName(functionCall.getName())
+                            .setResponse(responseStruct.build())
+                            .build())
+                    .build());
 
           } catch (Exception e) {
             log.error("루틴 추가 중 오류 발생: {}", e.getMessage());
@@ -118,13 +120,13 @@ public class VertexaiService {
             Struct.Builder errorStruct = Struct.newBuilder();
             errorStruct.putFields("status", Value.newBuilder().setStringValue("ERROR").build());
             errorStruct.putFields("message",
-                Value.newBuilder().setStringValue("루틴 '" + content + "' 추가에 실패했습니다: " + e.getMessage()).build());
+                    Value.newBuilder().setStringValue("루틴 '" + content + "' 추가에 실패했습니다: " + e.getMessage()).build());
             functionResponseParts.add(Part.newBuilder()
-                .setFunctionResponse(FunctionResponse.newBuilder()
-                    .setName(functionCall.getName())
-                    .setResponse(errorStruct.build())
-                    .build())
-                .build());
+                    .setFunctionResponse(FunctionResponse.newBuilder()
+                            .setName(functionCall.getName())
+                            .setResponse(errorStruct.build())
+                            .build())
+                    .build());
           }
         } else if (functionCall.getName().equals("getPersonalRoutines")) {
           // 루틴 조회 함수 호출
@@ -148,7 +150,7 @@ public class VertexaiService {
             // RoutineService 호출 실패 시
             log.error("루틴 목록 조회 중 오류 발생: {}", e.getMessage());
             functionResponseParts
-                .add(createErrorResponsePart(functionCall.getName(), "루틴 목록 조회에 실패했습니다: " + e.getMessage()));
+                    .add(createErrorResponsePart(functionCall.getName(), "루틴 목록 조회에 실패했습니다: " + e.getMessage()));
           }
         } else if (functionCall.getName().equals("checkRoutineAsDone")) {
           // 루틴 달성 체크
@@ -159,7 +161,7 @@ public class VertexaiService {
           } catch (Exception e) {
             log.error("FunctionCall 인자 파싱 실패 (checkRoutineAsDone): {}", e.getMessage());
             functionResponseParts
-                .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
+                    .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
             continue;
           }
           try {
@@ -167,11 +169,11 @@ public class VertexaiService {
             // RoutineService의 checkRoutineAttainment 메서드 호출
             routineService.checkRoutineAttainment(uid, routineId); //
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 완료 처리되었습니다."));
+                    .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 완료 처리되었습니다."));
           } catch (Exception e) {
             log.error("루틴 달성 체크 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 완료 처리에 실패했습니다: " + e.getMessage()));
+                    "루틴(ID: " + routineId + ") 완료 처리에 실패했습니다: " + e.getMessage()));
           }
         } else if (functionCall.getName().equals("uncheckRoutine")) {
           // 루틴 체크 해제
@@ -182,7 +184,7 @@ public class VertexaiService {
           } catch (Exception e) {
             log.error("FunctionCall 인자 파싱 실패 (uncheckRoutine): {}", e.getMessage());
             functionResponseParts
-                .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
+                    .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
             continue;
           }
           try {
@@ -190,11 +192,11 @@ public class VertexaiService {
             // RoutineService의 uncheckRoutineAttainment 메서드 호출
             routineService.uncheckRoutineAttainment(uid, routineId); //
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")의 완료 체크가 해제되었습니다."));
+                    .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")의 완료 체크가 해제되었습니다."));
           } catch (Exception e) {
             log.error("루틴 체크 해제 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 체크 해제에 실패했습니다: " + e.getMessage()));
+                    "루틴(ID: " + routineId + ") 체크 해제에 실패했습니다: " + e.getMessage()));
           }
         } else {
           // 알 수 없는 함수 호출 처리
@@ -202,13 +204,13 @@ public class VertexaiService {
           Struct.Builder errorStruct = Struct.newBuilder();
           errorStruct.putFields("status", Value.newBuilder().setStringValue("UNKNOWN_FUNCTION").build());
           errorStruct.putFields("message",
-              Value.newBuilder().setStringValue("알 수 없는 함수 '" + functionCall.getName() + "' 호출됨").build());
+                  Value.newBuilder().setStringValue("알 수 없는 함수 '" + functionCall.getName() + "' 호출됨").build());
           functionResponseParts.add(Part.newBuilder()
-              .setFunctionResponse(FunctionResponse.newBuilder()
-                  .setName(functionCall.getName()) // 받은 이름 그대로 반환
-                  .setResponse(errorStruct.build())
-                  .build())
-              .build());
+                  .setFunctionResponse(FunctionResponse.newBuilder()
+                          .setName(functionCall.getName()) // 받은 이름 그대로 반환
+                          .setResponse(errorStruct.build())
+                          .build())
+                  .build());
         }
       }
       // Function Call이 아닌 다른 Part(예: 일반 텍스트)는 무시하고 다음 Part 확인
@@ -231,7 +233,7 @@ public class VertexaiService {
 
   /**
    * Function Calling 성공 응답 Part를 생성합니다.
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param message      AI에게 전달할 결과 메시지 (텍스트 또는 JSON 문자열)
    * @return 생성된 Part 객체
@@ -241,16 +243,16 @@ public class VertexaiService {
     responseStruct.putFields("status", Value.newBuilder().setStringValue("SUCCESS").build());
     responseStruct.putFields("result", Value.newBuilder().setStringValue(message).build());
     return Part.newBuilder()
-        .setFunctionResponse(FunctionResponse.newBuilder()
-            .setName(functionName)
-            .setResponse(responseStruct.build())
-            .build())
-        .build();
+            .setFunctionResponse(FunctionResponse.newBuilder()
+                    .setName(functionName)
+                    .setResponse(responseStruct.build())
+                    .build())
+            .build();
   }
 
   /**
    * Function Calling 실패 응답 Part를 생성합니다. (기본 상태 코드 "ERROR")
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param errorMessage AI에게 전달할 에러 메시지
    * @return 생성된 Part 객체
@@ -261,7 +263,7 @@ public class VertexaiService {
 
   /**
    * Function Calling 실패 응답 Part를 생성합니다. (상태 코드 지정 가능)
-   * 
+   *
    * @param functionName 호출된 함수 이름
    * @param errorMessage AI에게 전달할 에러 메시지
    * @param statusCode   상태 코드 (예: "ERROR", "UNKNOWN_FUNCTION")
@@ -272,11 +274,11 @@ public class VertexaiService {
     errorStruct.putFields("status", Value.newBuilder().setStringValue(statusCode).build());
     errorStruct.putFields("message", Value.newBuilder().setStringValue(errorMessage).build());
     return Part.newBuilder()
-        .setFunctionResponse(FunctionResponse.newBuilder()
-            .setName(functionName)
-            .setResponse(errorStruct.build())
-            .build())
-        .build();
+            .setFunctionResponse(FunctionResponse.newBuilder()
+                    .setName(functionName)
+                    .setResponse(errorStruct.build())
+                    .build())
+            .build();
   }
 
   private Content convertDtoToContent(ChatMessageDto dto) {
@@ -287,8 +289,8 @@ public class VertexaiService {
       role = "user";
     }
     return Content.newBuilder()
-        .setRole(role)
-        .addParts(Part.newBuilder().setText(dto.getText()).build())
-        .build();
+            .setRole(role)
+            .addParts(Part.newBuilder().setText(dto.getText()).build())
+            .build();
   }
 }
