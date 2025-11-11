@@ -3,15 +3,24 @@ package com.rus.rus.application;
 import com.rus.rus.common.ApiException;
 import com.rus.rus.controller.dto.res.KfoodDetectionResponseDto;
 
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class KfoodService {
@@ -21,8 +30,26 @@ public class KfoodService {
 
   public KfoodService(WebClient.Builder webClientBuilder,
       @Value("${kfood.api.base-url}") String kfoodApiBaseUrl) {
-    // FastAPI 서버의 내부 주소로 WebClient 초기화
-    this.webClient = webClientBuilder.baseUrl(kfoodApiBaseUrl).build();
+    // 대용량 파일 처리를 위한 타임아웃 설정
+    HttpClient httpClient = HttpClient.create()
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30000)
+        .responseTimeout(Duration.ofSeconds(120))
+        .doOnConnected(conn -> conn
+            .addHandlerLast(new ReadTimeoutHandler(120, TimeUnit.SECONDS))
+            .addHandlerLast(new WriteTimeoutHandler(120, TimeUnit.SECONDS)));
+
+    // 메모리 버퍼 크기 증가 (Base64 인코딩된 이미지 응답을 위해)
+    ExchangeStrategies strategies = ExchangeStrategies.builder()
+        .codecs(configurer -> configurer
+            .defaultCodecs()
+            .maxInMemorySize(50 * 1024 * 1024)) // 50MB
+        .build();
+
+    this.webClient = webClientBuilder
+        .baseUrl(kfoodApiBaseUrl)
+        .clientConnector(new ReactorClientHttpConnector(httpClient))
+        .exchangeStrategies(strategies)
+        .build();
   }
 
   /**
