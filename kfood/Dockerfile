@@ -61,5 +61,5 @@ ENV UVICORN_WORKERS=1
 ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=8001
 
-# 컨테이너 시작 명령 (개발/간단 운영용)
-CMD ["sh", "-c", "uvicorn api:app --host ${UVICORN_HOST} --port ${UVICORN_PORT} --workers ${UVICORN_WORKERS}"]
+# 컨테이너 시작 명령 - 타임아웃 증가
+CMD ["sh", "-c", "uvicorn api:app --host ${UVICORN_HOST} --port ${UVICORN_PORT} --workers ${UVICORN_WORKERS} --timeout-keep-alive 120"]

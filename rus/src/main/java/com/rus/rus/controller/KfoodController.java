@@ -5,11 +5,13 @@ import com.rus.rus.common.ApiException;
 import com.rus.rus.controller.dto.res.KfoodDetectionResponseDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @RestController
 @RequestMapping("/kfood")
 @RequiredArgsConstructor
@@ -31,8 +33,16 @@ public class KfoodController {
       throw new ApiException(HttpStatus.BAD_REQUEST, "분석할 이미지 파일이 없습니다.");
     }
 
-    KfoodDetectionResponseDto response = kfoodService.detectObjects(file);
+    log.info("이미지 분석 요청 - 파일명: {}, 크기: {} bytes",
+        file.getOriginalFilename(), file.getSize());
 
-    return ResponseEntity.ok(response);
+    try {
+      KfoodDetectionResponseDto response = kfoodService.detectObjects(file);
+      log.info("이미지 분석 성공 - 감지된 음식: {}", response.getDetectedFoodLabels());
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      log.error("이미지 분석 실패: {}", e.getMessage(), e);
+      throw e;
+    }
   }
 }
