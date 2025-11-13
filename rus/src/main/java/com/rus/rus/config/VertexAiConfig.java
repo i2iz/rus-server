@@ -76,14 +76,7 @@ public class VertexAiConfig {
                                                 .build())
                                 .build();
 
-                // 2. 사용자 루틴 목록 조회: API 4-3
-                FunctionDeclaration getPersonalRoutines = FunctionDeclaration.newBuilder()
-                                .setName("getPersonalRoutines")
-                                .setDescription("현재 사용자의 개인 루틴 목록 전체와 각 루틴의 오늘 달성 여부를 조회합니다. 사용자가 '내 루틴 보여줘', '오늘 할 일 목록 알려줘' 등 자신의 루틴 목록 확인을 요청할 때 사용합니다.")
-                                .setParameters(Schema.newBuilder().setType(Type.OBJECT).build())
-                                .build();
-
-                // 3. 루틴 달성 체크 : API 4-7
+                // 2. 루틴 달성 체크 : API 4-7
                 FunctionDeclaration checkRoutineAsDone = FunctionDeclaration.newBuilder()
                                 .setName("checkRoutineAsDone")
                                 .setDescription("사용자가 특정 개인 루틴을 완료했다고 알리면, 해당 루틴을 오늘 달성한 것으로 체크합니다. 사용자가 '물 마시기 완료', '운동 끝냈어' 와 같이 말할 때 사용합니다.")
@@ -97,7 +90,7 @@ public class VertexAiConfig {
                                                 .build())
                                 .build();
 
-                // 4. 루틴 체크 해제 : API 4-8
+                // 3. 루틴 체크 해제 : API 4-8
                 FunctionDeclaration uncheckRoutine = FunctionDeclaration.newBuilder()
                                 .setName("uncheckRoutine")
                                 .setDescription("사용자가 특정 개인 루틴의 오늘 달성 체크를 취소(해제)하길 원할 때 사용합니다. 사용자가 '물 마시기 체크 취소', '운동 안 했는데 잘못 눌렀어' 와 같이 말할 때 사용합니다.")
@@ -111,11 +104,56 @@ public class VertexAiConfig {
                                                 .build())
                                 .build();
 
+                // 4. 루틴 수정 : API 4-5
+                FunctionDeclaration updateRoutine = FunctionDeclaration.newBuilder()
+                                .setName("updateRoutine")
+                                .setDescription("사용자가 특정 개인 루틴의 내용이나 카테고리를 수정합니다. 사용자가 '루틴 수정해줘' 또는 '루틴 바꿔줘'와 같이 말할 때 사용합니다.")
+                                .setParameters(Schema.newBuilder().setType(Type.OBJECT)
+                                                .putProperties("routineId", Schema.newBuilder()
+                                                                .setType(Type.NUMBER)
+                                                                .setDescription("수정할 루틴의 고유 ID(숫자)입니다. AI는 대화 맥락이나 이전 루틴 목록 조회 결과를 바탕으로 사용자가 어떤 루틴을 지칭하는지 정확히 파악하여 ID를 제공해야 합니다.")
+                                                                .build())
+                                                .putProperties("content", Schema.newBuilder()
+                                                                .setType(Type.STRING)
+                                                                .setDescription("수정할 루틴의 새 텍스트 내용입니다. (예: '아침 9시에 물 마시기')")
+                                                                .build())
+                                                .putProperties("categoryId", Schema.newBuilder()
+                                                                .setType(Type.NUMBER)
+                                                                .setDescription("수정할 루틴의 새 카테고리 고유 ID(숫자)입니다. AI는 사용자의 요청과 대화 맥락을 바탕으로 5개 카테고리 중 가장 적절한 것을 추론하여 해당하는 숫자 ID를 제공해야 합니다.")
+                                                                .build())
+                                                .addRequired("routineId")
+                                                .addRequired("content")
+                                                .addRequired("categoryId")
+                                                .build())
+                                .build();
+
+                // 5. 루틴 삭제 : API 4-6
+                FunctionDeclaration deleteRoutine = FunctionDeclaration.newBuilder()
+                                .setName("deleteRoutine")
+                                .setDescription("사용자가 특정 개인 루틴을 삭제합니다. 사용자가 '루틴 삭제해줘' 또는 '루틴 없애줘'와 같이 말할 때 사용합니다.")
+                                .setParameters(Schema.newBuilder().setType(Type.OBJECT)
+                                                .putProperties("routineId", Schema.newBuilder()
+                                                                .setType(Type.NUMBER)
+                                                                .setDescription("삭제할 루틴의 고유 ID(숫자)입니다. AI는 대화 맥락이나 이전 루틴 목록 조회 결과를 바탕으로 사용자가 어떤 루틴을 지칭하는지 정확히 파악하여 ID를 제공해야 합니다.")
+                                                                .build())
+                                                .addRequired("routineId")
+                                                .build())
+                                .build();
+
+                // 6. 루틴 수행 피드백 조회
+                FunctionDeclaration getRoutinePerformanceFeedback = FunctionDeclaration.newBuilder()
+                                .setName("getRoutinePerformanceFeedback")
+                                .setDescription("사용자가 루틴 수행 상태를 물을 때(예: '나 요즘 루틴 잘 하고 있어?'), 최근 한 달 동안의 루틴 달성 기록을 조회하여 피드백을 생성합니다. 기록에 따라 루틴 조정을 제안할 수 있습니다.")
+                                .setParameters(Schema.newBuilder().setType(Type.OBJECT).build())
+                                .build();
+
                 return Tool.newBuilder()
                                 .addFunctionDeclarations(addCustomRoutine)
-                                .addFunctionDeclarations(getPersonalRoutines)
                                 .addFunctionDeclarations(checkRoutineAsDone)
                                 .addFunctionDeclarations(uncheckRoutine)
+                                .addFunctionDeclarations(updateRoutine)
+                                .addFunctionDeclarations(deleteRoutine)
+                                .addFunctionDeclarations(getRoutinePerformanceFeedback)
                                 .build();
         }
 
@@ -145,19 +183,27 @@ public class VertexAiConfig {
                                                                 // 함수 호출 지침
                                                                 "만약 사용자가 '새로운 루틴을 추가'해달라고 명시적으로 요청하거나, 당신이 제안한 루틴을 추가하겠다고 동의하면(예: '운동 카테고리에 '30분 달리기' 추가해줘', '응, 추가해줘'), 반드시 `addCustomRoutine` 함수를 호출해야 합니다. 함수 호출 시, 대화 내용과 맥락을 바탕으로 **가장 적절한 카테고리를 스스로 추론**하여 정확한 **숫자 ID**를 `categoryId` 파라미터로 전달해야 합니다. "
                                                                 +
-                                                                "사용자가 자신의 루틴 목록을 보여달라고 요청하면(예: '내 루틴 목록', '오늘 할 일', '등록된 루틴'), 반드시 `getPersonalRoutines` 함수를 호출해야 합니다. "
+                                                                "사용자가 자신의 루틴 목록을 보여달라고 요청하면(예: '내 루틴 목록', '오늘 할 일', '등록된 루틴'), 제공된 루틴 목록을 참고하여 직접 응답하세요. "
                                                                 +
-                                                                "사용자가 특정 루틴을 **완료했음**을 나타내는 표현(예: '물 마시기 끝', '운동 완료', '스트레칭 체크해줘')을 사용하면, 대화 맥락에서 **해당 루틴의 ID를 정확히 파악**하여 `checkRoutineAsDone` 함수를 호출하세요. "
+                                                                "사용자가 특정 루틴을 **완료했음**을 나타내는 표현(예: '물 마시기 끝', '운동 완료', '스트레칭 체크해줘')을 사용하면, 제공된 루틴 목록에서 해당 루틴의 ID를 찾아 `checkRoutineAsDone` 함수를 호출하세요. "
                                                                 +
-                                                                "사용자가 특정 루틴의 **완료를 취소**하려는 표현(예: '물 마시기 체크 해제', '운동 취소', '스트레칭 잘못 눌렀어')을 사용하면, **해당 루틴의 ID를 정확히 파악**하여 `uncheckRoutine` 함수를 호출하세요. "
+                                                                "사용자가 특정 루틴의 **완료를 취소**하려는 표현(예: '물 마시기 체크 해제', '운동 취소', '스트레칭 잘못 눌렀어')을 사용하면, 제공된 루틴 목록에서 해당 루틴의 ID를 찾아 `uncheckRoutine` 함수를 호출하세요. "
+                                                                +
+                                                                "사용자가 루틴을 **수정**하려는 표현(예: '루틴 수정해줘', '루틴 바꿔줘')을 사용하면, 제공된 루틴 목록에서 해당 루틴의 ID를 찾아 `updateRoutine` 함수를 호출하세요. "
+                                                                +
+                                                                "사용자가 루틴을 **삭제**하려는 표현(예: '루틴 삭제해줘', '루틴 없애줘')을 사용하면, 제공된 루틴 목록에서 해당 루틴의 ID를 찾아 `deleteRoutine` 함수를 호출하세요. "
+                                                                +
+                                                                "사용자가 루틴 수행 상태를 물을 때(예: '나 요즘 루틴 잘 하고 있어?', '루틴 수행 어때?'), `getRoutinePerformanceFeedback` 함수를 호출하여 최근 한 달 기록을 조회하고, 피드백을 제공하세요. 기록에 따라 루틴 내용을 조정해 드릴까요 같은 제안을 포함하세요. "
                                                                 +
                                                                 "루틴 ID를 모를 경우, 사용자에게 어떤 루틴인지 다시 질문할 수 있습니다."
                                                                 +
-                                                                "**중요:** `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출해야 하는데 어떤 루틴의 ID(`routineId`)를 사용해야 할지 대화 맥락만으로 명확하지 않다면, 사용자에게 다시 질문하지 말고 먼저 `getPersonalRoutines` 함수를 호출하여 전체 루틴 목록(ID 포함)을 **JSON 형식으로** 얻으세요. "
+                                                                "**중요:** 제공된 루틴 목록(JSON)을 항상 참고하여 ID를 추론하세요. 함수 호출이 필요한 경우 반드시 함수를 호출하고, 직접 대답하지 마세요. "
+                                                                +
+                                                                "**중요:** `checkRoutineAsDone`, `uncheckRoutine`, `updateRoutine`, `deleteRoutine` 함수를 호출해야 하는데 어떤 루틴의 ID(`routineId`)를 사용해야 할지 대화 맥락만으로 명확하지 않다면, 사용자에게 다시 질문하지 말고 먼저 `getPersonalRoutines` 함수를 호출하여 전체 루틴 목록(ID 포함)을 **JSON 형식으로** 얻으세요. "
                                                                 +
                                                                 "**그 다음, `getPersonalRoutines` 함수의 결과로 받은 JSON 데이터 내에서 사용자가 언급한 루틴의 내용(`content`)과 일치하는 항목을 찾아 해당 항목의 `id` 값을 정확히 추출하세요.** "
                                                                 +
-                                                                "**추출한 `id` 값을 `routineId` 파라미터로 사용하여** `checkRoutineAsDone` 또는 `uncheckRoutine` 함수를 호출하세요. 절대로 임의의 숫자를 사용하거나 JSON 결과와 관련 없는 ID를 추측하지 마세요."
+                                                                "**추출한 `id` 값을 `routineId` 파라미터로 사용하여** 해당 함수를 호출하세요. 절대로 임의의 숫자를 사용하거나 JSON 결과와 관련 없는 ID를 추측하지 마세요."
                                                                 +
                                                                 "\n\n" +
                                                                 // 카테고리 ID 비밀 유지

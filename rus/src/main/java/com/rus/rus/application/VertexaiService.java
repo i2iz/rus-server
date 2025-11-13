@@ -16,7 +16,9 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.rus.rus.controller.dto.ChatMessageDto;
 import com.rus.rus.controller.dto.req.RoutineAddCustomRequestDto;
+import com.rus.rus.controller.dto.req.RoutineUpdateRequestDto;
 import com.rus.rus.controller.dto.res.PersonalRoutineResponseDto;
+import com.rus.rus.controller.dto.res.RoutinePerformanceFeedbackDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -157,30 +159,6 @@ public class VertexaiService {
                     .build())
                 .build());
           }
-        } else if (functionCall.getName().equals("getPersonalRoutines")) {
-          // 루틴 조회 함수 호출
-          try {
-            log.info("RoutineService.getPersonalRoutines 호출. uid: {}", uid);
-            // 실제 서비스 메서드 호출하여 루틴 목록 DTO 받기
-            PersonalRoutineResponseDto routinesDtoForCall = routineService.getPersonalRoutines(uid); //
-
-            // DTO 객체를 JSON 문자열로 변환 (AI가 결과를 텍스트로 이해하도록)
-            String routinesJsonForCall = objectMapper.writeValueAsString(routinesDtoForCall);
-
-            // 성공 응답 Part 생성 및 리스트에 추가
-            functionResponseParts.add(createSuccessResponsePart(functionCall.getName(), routinesJsonForCall));
-            log.info("루틴 목록 조회 성공, 결과를 JSON 형태로 AI에게 반환합니다.");
-
-          } catch (JsonProcessingException e) {
-            // JSON 변환 실패 시
-            log.error("루틴 목록 JSON 변환 중 오류 발생: {}", e.getMessage());
-            functionResponseParts.add(createErrorResponsePart(functionCall.getName(), "루틴 목록 결과를 처리하는 중 오류가 발생했습니다."));
-          } catch (Exception e) {
-            // RoutineService 호출 실패 시
-            log.error("루틴 목록 조회 중 오류 발생: {}", e.getMessage());
-            functionResponseParts
-                .add(createErrorResponsePart(functionCall.getName(), "루틴 목록 조회에 실패했습니다: " + e.getMessage()));
-          }
         } else if (functionCall.getName().equals("checkRoutineAsDone")) {
           // 루틴 달성 체크
           Map<String, Value> args = functionCall.getArgs().getFieldsMap();
@@ -226,6 +204,77 @@ public class VertexaiService {
             log.error("루틴 체크 해제 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
                 "루틴(ID: " + routineId + ") 체크 해제에 실패했습니다: " + e.getMessage()));
+          }
+        } else if (functionCall.getName().equals("updateRoutine")) {
+          // 루틴 수정
+          Map<String, Value> args = functionCall.getArgs().getFieldsMap();
+          int routineId = 0;
+          String content = null;
+          int categoryId = 0;
+          try {
+            routineId = (int) args.get("routineId").getNumberValue();
+            content = args.get("content").getStringValue();
+            categoryId = (int) args.get("categoryId").getNumberValue();
+          } catch (Exception e) {
+            log.error("FunctionCall 인자 파싱 실패 (updateRoutine): {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(),
+                    "AI가 잘못된 함수 인자(routineId, content, categoryId)를 전달했습니다."));
+            continue;
+          }
+          try {
+            log.info("RoutineService.updateRoutine 호출. uid: {}, routineId: {}, content: {}, categoryId: {}", uid,
+                routineId, content, categoryId);
+            // RoutineService의 updateRoutine 메서드 호출 (DTO 생성 필요)
+            RoutineUpdateRequestDto updateDto = new RoutineUpdateRequestDto();
+            updateDto.setContent(content);
+            updateDto.setCategoryId(categoryId);
+            routineService.updateRoutine(routineId, updateDto, uid);
+            functionResponseParts
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 수정되었습니다."));
+          } catch (Exception e) {
+            log.error("루틴 수정 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
+                "루틴(ID: " + routineId + ") 수정에 실패했습니다: " + e.getMessage()));
+          }
+        } else if (functionCall.getName().equals("deleteRoutine")) {
+          // 루틴 삭제
+          Map<String, Value> args = functionCall.getArgs().getFieldsMap();
+          int routineId = 0;
+          try {
+            routineId = (int) args.get("routineId").getNumberValue();
+          } catch (Exception e) {
+            log.error("FunctionCall 인자 파싱 실패 (deleteRoutine): {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(), "AI가 잘못된 함수 인자(routineId)를 전달했습니다."));
+            continue;
+          }
+          try {
+            log.info("RoutineService.deleteRoutine 호출. uid: {}, routineId: {}", uid, routineId);
+            // RoutineService의 deleteRoutine 메서드 호출
+            routineService.deleteRoutine(routineId, uid);
+            functionResponseParts
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 삭제되었습니다."));
+          } catch (Exception e) {
+            log.error("루틴 삭제 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
+                "루틴(ID: " + routineId + ") 삭제에 실패했습니다: " + e.getMessage()));
+          }
+        } else if (functionCall.getName().equals("getRoutinePerformanceFeedback")) {
+          // 루틴 수행 피드백 조회
+          try {
+            log.info("RoutineService.getRoutinePerformanceFeedback 호출. uid: {}", uid);
+            RoutinePerformanceFeedbackDto feedbackDto = routineService.getRoutinePerformanceFeedback(uid);
+            String feedbackJson = objectMapper.writeValueAsString(feedbackDto);
+            functionResponseParts.add(createSuccessResponsePart(functionCall.getName(), feedbackJson));
+            log.info("루틴 수행 피드백 조회 성공");
+          } catch (JsonProcessingException e) {
+            log.error("루틴 수행 피드백 JSON 변환 중 오류 발생: {}", e.getMessage());
+            functionResponseParts.add(createErrorResponsePart(functionCall.getName(), "루틴 수행 피드백을 처리하는 중 오류가 발생했습니다."));
+          } catch (Exception e) {
+            log.error("루틴 수행 피드백 조회 중 오류 발생: {}", e.getMessage());
+            functionResponseParts
+                .add(createErrorResponsePart(functionCall.getName(), "루틴 수행 피드백 조회에 실패했습니다: " + e.getMessage()));
           }
         } else {
           // 알 수 없는 함수 호출 처리
