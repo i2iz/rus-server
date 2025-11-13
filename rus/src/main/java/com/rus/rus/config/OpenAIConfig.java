@@ -1,12 +1,12 @@
 package com.rus.rus.config;
 
 import lombok.Getter;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import okhttp3.OkHttpClient;
+import java.time.Duration;
 
 @Configuration
 public class OpenAIConfig {
@@ -19,7 +19,11 @@ public class OpenAIConfig {
 
     @Bean
     public OkHttpClient openAiHttpClient() {
-        return new OkHttpClient.Builder().build();
+        return new OkHttpClient.Builder()
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ofSeconds(50))
+                .build();
     }
 
     @Bean

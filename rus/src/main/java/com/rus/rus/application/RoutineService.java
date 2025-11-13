@@ -981,4 +981,86 @@ public class RoutineService {
 
                 return responseDto;
         }
+        /**
+         * 최근 7일 동안의 루틴 달성 현황을 집계하여 리포트를 반환합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 최근 7일 통계가 담긴 {@link WeeklyRoutineReportResponseDto}
+         */
+        @Transactional(readOnly = true)
+        public WeeklyRoutineReportResponseDto getWeeklyRoutineReport(String uid) {
+                // 사용자의 모든 개인 루틴 조회
+                List<UserRoutine> userRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
+
+                LocalDate today = LocalDate.now();
+                LocalDate startDate = today.minusDays(6); // 최근 7일: startDate ~ today
+
+                // 최근 7일간의 달성 기록 조회
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                LocalDateTime endDateTime = today.plusDays(1).atStartOfDay();
+
+                List<UserAttainment> weekAttainments = userAttainmentRepository
+                        .findByUserProfile_UidAndTimestampBetween(uid, startDateTime, endDateTime);
+
+                // 날짜별로 그룹핑
+                Map<LocalDate, List<UserAttainment>> attainmentsByDate = weekAttainments.stream()
+                        .collect(Collectors.groupingBy(a -> a.getTimestamp().toLocalDate()));
+
+                int routinesPerDay = userRoutines.size();
+                int totalPlanned = routinesPerDay * 7;
+                int totalCompleted = weekAttainments.size();
+                double weekRate = totalPlanned > 0 ? (totalCompleted * 100.0 / totalPlanned) : 0.0;
+
+                // 일자별 통계 생성
+                List<WeeklyRoutineReportResponseDto.DailyStat> dailyStats = new ArrayList<>();
+                for (int i = 0; i < 7; i++) {
+                        LocalDate date = startDate.plusDays(i);
+                        List<UserAttainment> dayAttainments = attainmentsByDate.getOrDefault(date, Collections.emptyList());
+                        int completed = dayAttainments.size();
+                        int total = routinesPerDay;
+                        double rate = total > 0 ? (completed * 100.0 / total) : 0.0;
+
+                        dailyStats.add(WeeklyRoutineReportResponseDto.DailyStat.builder()
+                                .date(date)
+                                .completed(completed)
+                                .total(total)
+                                .achievementRate(Math.round(rate * 10.0) / 10.0)
+                                .build());
+                }
+
+                // 카테고리별 통계
+                // 1) 루틴 개수(플랜) 카테고리별 카운트
+                Map<String, Long> plannedPerCategory = userRoutines.stream()
+                        .filter(r -> r.getCategory() != null)
+                        .collect(Collectors.groupingBy(
+                                r -> r.getCategory().getValue(),
+                                Collectors.counting()
+                        ));
+
+                // 2) 최근 7일 동안 카테고리별 완료 카운트
+                Map<String, Long> completedPerCategory = weekAttainments.stream()
+                        .map(UserAttainment::getUserRoutine)
+                        .filter(r -> r.getCategory() != null)
+                        .collect(Collectors.groupingBy(
+                                r -> r.getCategory().getValue(),
+                                Collectors.counting()
+                        ));
+
+                Map<String, Double> categoryRates = new HashMap<>();
+                for (String cat : ALL_CATEGORIES) {
+                        long planned = plannedPerCategory.getOrDefault(cat, 0L) * 7L;
+                        long comp = completedPerCategory.getOrDefault(cat, 0L);
+                        double rate = planned > 0 ? (comp * 100.0 / planned) : 0.0;
+                        categoryRates.put(cat, Math.round(rate * 10.0) / 10.0);
+                }
+
+                return WeeklyRoutineReportResponseDto.builder()
+                        .weekAchievementRate(Math.round(weekRate * 10.0) / 10.0)
+                        .totalCompleted(totalCompleted)
+                        .totalPlanned(totalPlanned)
+                        .categoryAchievementRates(categoryRates)
+                        .dailyStats(dailyStats)
+                        .build();
+        }
+
 }
