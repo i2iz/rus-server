@@ -2,11 +2,13 @@ package com.rus.rus.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.api.Part;
+import com.google.cloud.vertexai.api.Tool;
 import com.google.cloud.vertexai.generativeai.ChatSession;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,10 +37,37 @@ public class VertexaiService {
   private final GenerativeModel generativeModel;
   private final RoutineService routineService;
   private final ObjectMapper objectMapper; // DTO -> JSON 변환에 사용
+  private final VertexAI vertexAI;
+  private final Tool functionCallingTool;
+
+  @org.springframework.beans.factory.annotation.Value("${gcp.gemini.model.name}")
+  private String modelName;
 
   public String getChatResponse(String uid, List<ChatMessageDto> messages) throws IOException {
 
-    ChatSession chatSession = generativeModel.startChat();
+    // 루틴 목록 사전 조회
+    PersonalRoutineResponseDto routinesDto = routineService.getPersonalRoutines(uid);
+    String routinesJson = objectMapper.writeValueAsString(routinesDto);
+
+    // 시스템 프롬프트에 루틴 목록 추가
+    Content systemContent = generativeModel.getSystemInstruction().orElse(Content.newBuilder().build());
+    String baseSystemPrompt = systemContent.getPartsList().get(0).getText();
+    String dynamicSystemPrompt = baseSystemPrompt +
+        "\n\n현재 사용자의 루틴 목록 (JSON 형식):\n" + routinesJson +
+        "\n\n이 목록을 참고하여 routineId를 추론하세요. ID는 목록의 'id' 필드에서 가져옵니다.";
+
+    Content dynamicSystemInstruction = Content.newBuilder()
+        .addParts(Part.newBuilder().setText(dynamicSystemPrompt).build())
+        .build();
+
+    GenerativeModel dynamicModel = new GenerativeModel.Builder()
+        .setModelName(modelName)
+        .setVertexAi(vertexAI)
+        .setTools(Arrays.asList(functionCallingTool))
+        .setSystemInstruction(dynamicSystemInstruction)
+        .build();
+
+    ChatSession chatSession = dynamicModel.startChat();
 
     List<Content> history = new ArrayList<>();
     if (messages.size() > 1) {
@@ -132,13 +162,13 @@ public class VertexaiService {
           try {
             log.info("RoutineService.getPersonalRoutines 호출. uid: {}", uid);
             // 실제 서비스 메서드 호출하여 루틴 목록 DTO 받기
-            PersonalRoutineResponseDto routinesDto = routineService.getPersonalRoutines(uid); //
+            PersonalRoutineResponseDto routinesDtoForCall = routineService.getPersonalRoutines(uid); //
 
             // DTO 객체를 JSON 문자열로 변환 (AI가 결과를 텍스트로 이해하도록)
-            String routinesJson = objectMapper.writeValueAsString(routinesDto);
+            String routinesJsonForCall = objectMapper.writeValueAsString(routinesDtoForCall);
 
             // 성공 응답 Part 생성 및 리스트에 추가
-            functionResponseParts.add(createSuccessResponsePart(functionCall.getName(), routinesJson));
+            functionResponseParts.add(createSuccessResponsePart(functionCall.getName(), routinesJsonForCall));
             log.info("루틴 목록 조회 성공, 결과를 JSON 형태로 AI에게 반환합니다.");
 
           } catch (JsonProcessingException e) {
