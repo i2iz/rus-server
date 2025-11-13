@@ -2,6 +2,7 @@ package com.rus.rus.application;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -980,5 +981,47 @@ public class RoutineService {
                                 .build();
 
                 return responseDto;
+        }
+
+        /**
+         * (API-4.16) 루틴 수행 피드백 조회
+         * 최근 일주일 동안의 루틴 달성 기록을 조회하여 피드백 데이터를 반환합니다.
+         *
+         * @param uid 조회할 사용자의 고유 식별자(UID)
+         * @return 최근 일주일 루틴 달성 기록이 포함된 {@link RoutinePerformanceFeedbackDto} 객체
+         */
+        @Transactional(readOnly = true)
+        public RoutinePerformanceFeedbackDto getRoutinePerformanceFeedback(String uid) {
+                LocalDate oneWeekAgo = LocalDate.now().minusWeeks(1);
+                LocalDateTime startOfPeriod = oneWeekAgo.atStartOfDay();
+                LocalDateTime endOfPeriod = LocalDate.now().atTime(LocalTime.MAX);
+
+                List<UserAttainment> attainments = userAttainmentRepository
+                                .findByUserProfile_UidAndTimestampBetween(uid, startOfPeriod, endOfPeriod);
+
+                Map<Integer, Long> attainmentCountByRoutine = attainments.stream()
+                                .collect(Collectors.groupingBy(att -> att.getUserRoutine().getId(),
+                                                Collectors.counting()));
+
+                List<UserRoutine> userRoutines = userRoutineRepository.findByUserProfile_Uid(uid);
+
+                List<RoutinePerformanceItemDto> performanceItems = userRoutines.stream()
+                                .map(routine -> {
+                                        long attainmentCount = attainmentCountByRoutine.getOrDefault(routine.getId(),
+                                                        0L);
+                                        double completionRate = (attainmentCount / 7.0) * 100; // 일주일 기준
+                                        return RoutinePerformanceItemDto.builder()
+                                                        .routineId(routine.getId())
+                                                        .content(routine.getContent())
+                                                        .category(routine.getCategory().getValue())
+                                                        .attainmentCount(attainmentCount)
+                                                        .completionRate(Math.round(completionRate * 100.0) / 100.0)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
+
+                return RoutinePerformanceFeedbackDto.builder()
+                                .performanceItems(performanceItems)
+                                .build();
         }
 }
