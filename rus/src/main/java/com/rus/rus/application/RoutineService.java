@@ -984,16 +984,16 @@ public class RoutineService {
         }
 
         /**
-         * 루틴 수행 피드백 조회
-         * 최근 한 달 동안의 루틴 달성 기록을 조회하여 피드백 데이터를 반환합니다.
+         * (API-4.16) 루틴 수행 피드백 조회
+         * 최근 일주일 동안의 루틴 달성 기록을 조회하여 피드백 데이터를 반환합니다.
          *
          * @param uid 조회할 사용자의 고유 식별자(UID)
-         * @return 최근 한 달 루틴 달성 기록이 포함된 {@link RoutinePerformanceFeedbackDto} 객체
+         * @return 최근 일주일 루틴 달성 기록이 포함된 {@link RoutinePerformanceFeedbackDto} 객체
          */
         @Transactional(readOnly = true)
         public RoutinePerformanceFeedbackDto getRoutinePerformanceFeedback(String uid) {
-                LocalDate oneMonthAgo = LocalDate.now().minusMonths(1);
-                LocalDateTime startOfPeriod = oneMonthAgo.atStartOfDay();
+                LocalDate oneWeekAgo = LocalDate.now().minusWeeks(1);
+                LocalDateTime startOfPeriod = oneWeekAgo.atStartOfDay();
                 LocalDateTime endOfPeriod = LocalDate.now().atTime(LocalTime.MAX);
 
                 List<UserAttainment> attainments = userAttainmentRepository
@@ -1009,7 +1009,7 @@ public class RoutineService {
                                 .map(routine -> {
                                         long attainmentCount = attainmentCountByRoutine.getOrDefault(routine.getId(),
                                                         0L);
-                                        double completionRate = (attainmentCount / 30.0) * 100; // 간단한 계산, 실제로는 더 정교하게
+                                        double completionRate = (attainmentCount / 7.0) * 100; // 일주일 기준
                                         return RoutinePerformanceItemDto.builder()
                                                         .routineId(routine.getId())
                                                         .content(routine.getContent())
