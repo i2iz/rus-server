@@ -51,12 +51,16 @@ public class VertexaiService {
     PersonalRoutineResponseDto routinesDto = routineService.getPersonalRoutines(uid);
     String routinesJson = objectMapper.writeValueAsString(routinesDto);
 
-    // 시스템 프롬프트에 루틴 목록 추가
+    // 시스템 프롬프트에 루틴 목록 추가 + 추론/비노출 규칙 보강
     Content systemContent = generativeModel.getSystemInstruction().orElse(Content.newBuilder().build());
     String baseSystemPrompt = systemContent.getPartsList().get(0).getText();
     String dynamicSystemPrompt = baseSystemPrompt +
         "\n\n현재 사용자의 루틴 목록 (JSON 형식):\n" + routinesJson +
-        "\n\n이 목록을 참고하여 routineId를 추론하세요. ID는 목록의 'id' 필드에서 가져옵니다.";
+        "\n\n지침:" +
+        "\n- 위 목록의 각 항목 `id`는 routineId에 해당합니다. 이 값은 도구 호출에만 사용하며, 사용자에게는 절대 노출/요구하지 마세요." +
+        "\n- notification 필드는 존재하지 않는 필드로 취급하고 무시하세요." +
+        "\n- 대화 맥락과 목록을 활용해 routineId 등 필요한 파라미터를 먼저 추론한 뒤, 바로 도구를 호출하세요. 사용자의 추가 확인을 요구하지 마세요." +
+        "\n- 정말로 모호할 때만 콘텐츠 텍스트로 재질문하고, 숫자 ID는 언급하지 마세요.";
 
     Content dynamicSystemInstruction = Content.newBuilder()
         .addParts(Part.newBuilder().setText(dynamicSystemPrompt).build())
@@ -133,11 +137,11 @@ public class VertexaiService {
                 uid, routineDto.getContent(), routineDto.getCategoryId());
             routineService.addCustomRoutineToUser(uid, routineDto);
 
-            // 성공 응답 Part 생성 및 리스트에 추가
+            // 성공 응답 Part - ID 노출 금지
             Struct.Builder responseStruct = Struct.newBuilder();
             responseStruct.putFields("status", Value.newBuilder().setStringValue("SUCCESS").build());
             responseStruct.putFields("message",
-                Value.newBuilder().setStringValue("루틴 '" + content + "'이(가) 성공적으로 추가되었습니다.").build());
+                Value.newBuilder().setStringValue("루틴이 성공적으로 추가되었습니다.").build());
             functionResponseParts.add(Part.newBuilder()
                 .setFunctionResponse(FunctionResponse.newBuilder()
                     .setName(functionCall.getName())
@@ -147,11 +151,11 @@ public class VertexaiService {
 
           } catch (Exception e) {
             log.error("루틴 추가 중 오류 발생: {}", e.getMessage());
-            // 서비스 로직 실패 시 에러 응답 Part 생성 및 리스트에 추가
+            // 서비스 로직 실패 시 에러 응답 Part 생성 및 리스트에 추가 (민감 정보 제거)
             Struct.Builder errorStruct = Struct.newBuilder();
             errorStruct.putFields("status", Value.newBuilder().setStringValue("ERROR").build());
             errorStruct.putFields("message",
-                Value.newBuilder().setStringValue("루틴 '" + content + "' 추가에 실패했습니다: " + e.getMessage()).build());
+                Value.newBuilder().setStringValue("루틴 추가에 실패했습니다. 잠시 후 다시 시도해 주세요.").build());
             functionResponseParts.add(Part.newBuilder()
                 .setFunctionResponse(FunctionResponse.newBuilder()
                     .setName(functionCall.getName())
@@ -176,11 +180,11 @@ public class VertexaiService {
             // RoutineService의 checkRoutineAttainment 메서드 호출
             routineService.checkRoutineAttainment(uid, routineId); //
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 완료 처리되었습니다."));
+                .add(createSuccessResponsePart(functionCall.getName(), "요청하신 루틴을 완료 처리했습니다."));
           } catch (Exception e) {
             log.error("루틴 달성 체크 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 완료 처리에 실패했습니다: " + e.getMessage()));
+                "루틴 완료 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."));
           }
         } else if (functionCall.getName().equals("uncheckRoutine")) {
           // 루틴 체크 해제
@@ -199,11 +203,11 @@ public class VertexaiService {
             // RoutineService의 uncheckRoutineAttainment 메서드 호출
             routineService.uncheckRoutineAttainment(uid, routineId); //
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")의 완료 체크가 해제되었습니다."));
+                .add(createSuccessResponsePart(functionCall.getName(), "요청하신 루틴의 완료 체크를 해제했습니다."));
           } catch (Exception e) {
             log.error("루틴 체크 해제 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 체크 해제에 실패했습니다: " + e.getMessage()));
+                "루틴 체크 해제에 실패했습니다. 잠시 후 다시 시도해 주세요."));
           }
         } else if (functionCall.getName().equals("updateRoutine")) {
           // 루틴 수정
@@ -231,11 +235,11 @@ public class VertexaiService {
             updateDto.setCategoryId(categoryId);
             routineService.updateRoutine(routineId, updateDto, uid);
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 수정되었습니다."));
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴이 수정되었습니다."));
           } catch (Exception e) {
             log.error("루틴 수정 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 수정에 실패했습니다: " + e.getMessage()));
+                "루틴 수정에 실패했습니다. 잠시 후 다시 시도해 주세요."));
           }
         } else if (functionCall.getName().equals("deleteRoutine")) {
           // 루틴 삭제
@@ -254,11 +258,11 @@ public class VertexaiService {
             // RoutineService의 deleteRoutine 메서드 호출
             routineService.deleteRoutine(routineId, uid);
             functionResponseParts
-                .add(createSuccessResponsePart(functionCall.getName(), "루틴(ID: " + routineId + ")이(가) 삭제되었습니다."));
+                .add(createSuccessResponsePart(functionCall.getName(), "루틴이 삭제되었습니다."));
           } catch (Exception e) {
             log.error("루틴 삭제 중 오류 발생: {}", e.getMessage());
             functionResponseParts.add(createErrorResponsePart(functionCall.getName(),
-                "루틴(ID: " + routineId + ") 삭제에 실패했습니다: " + e.getMessage()));
+                "루틴 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요."));
           }
         } else if (functionCall.getName().equals("getRoutinePerformanceFeedback")) {
           // 루틴 수행 피드백 조회
@@ -274,7 +278,7 @@ public class VertexaiService {
           } catch (Exception e) {
             log.error("루틴 수행 피드백 조회 중 오류 발생: {}", e.getMessage());
             functionResponseParts
-                .add(createErrorResponsePart(functionCall.getName(), "루틴 수행 피드백 조회에 실패했습니다: " + e.getMessage()));
+                .add(createErrorResponsePart(functionCall.getName(), "루틴 수행 피드백 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."));
           }
         } else {
           // 알 수 없는 함수 호출 처리
