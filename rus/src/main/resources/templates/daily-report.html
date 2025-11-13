@@ -111,7 +111,9 @@
         font-size: 0.9em;
         color: #666;
         line-height: 1.6;
-        white-space: pre-wrap;
+      }
+      .feedback-content p {
+        margin: 0 0 10px;
       }
     </style>
   </head>
@@ -164,9 +166,9 @@
 
       <div class="feedback-section">
         <h2>📝 Sera의 피드백</h2>
-        <p class="feedback-content" th:text="${aiFeedback}">
-          AI의 분석 피드백이 여기에 표시됩니다.
-        </p>
+        <div class="feedback-content" th:utext="${aiFeedback}">
+          <p>AI의 분석 피드백이 여기에 표시됩니다.</p>
+        </div>
       </div>
     </div>
 
