@@ -157,17 +157,17 @@
         </div>
       </div>
 
-      <div class="chart-section" th:if="${!chartDatasets.isEmpty()}">
-        <h2>최근 7일간의 루틴 달성 기록이에요</h2>
-        <div class="chart-container">
-          <canvas id="achievementChart"></canvas>
-        </div>
-      </div>
-
       <div class="feedback-section">
         <h2>📝 Sera의 피드백</h2>
         <div class="feedback-content" th:utext="${aiFeedback}">
           <p>AI의 분석 피드백이 여기에 표시됩니다.</p>
+        </div>
+      </div>
+
+      <div class="chart-section" th:if="${!chartDatasets.isEmpty()}">
+        <h2>최근 7일간의 루틴 달성 기록이에요</h2>
+        <div class="chart-container">
+          <canvas id="achievementChart"></canvas>
         </div>
       </div>
     </div>
